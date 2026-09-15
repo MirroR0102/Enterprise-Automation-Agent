@@ -162,15 +162,18 @@ web/           登录 / 工作台 / 开发日志
 reports/       Agent 可写的 Markdown
 tests/         pytest
 scripts/       init_db / purge_logs / 验收说明
-docs/superpowers/plans/  实现规划
+docs/superpowers/plans/  实现规划（与根目录同名稿一致）
+2026-09-15-enterprise-ops-agent.md  根目录规划稿
 ```
+
+产品 brief 的 `.docx` 仅本地参考，已在 `.gitignore`，不会上传。
 
 ## 常见问题
 
 - **Tavily 未配置**：工具返回明确错误，周报应写明未检索到公开新闻，而不是编造。
-- **DeepSeek 401/超时**：检查 `DEEPSEEK_API_KEY` 与 `TASK_TIMEOUT_S`。
+- **DeepSeek 401/超时**：检查 `DEEPSEEK_API_KEY`；任务超时固定 `TASK_TIMEOUT_S=30`（规划要求，勿擅自放宽）。
 - **MemorySaver 进程内记忆**：多副本/重启丢会话图状态；日志仍在 DB。后续可换 Postgres checkpointer。
-- **不要 git push**：直到明确说 VPN 已开并允许推送到 `https://github.com/MirroR0102/Enterprise-Automation-Agent`。
+- 远程仓库：https://github.com/MirroR0102/Enterprise-Automation-Agent
 
 ## 明确不做
 

@@ -70,7 +70,6 @@ Windows / PowerShell：用 `D:\anaconda\python.exe -m venv .venv` 建环境；�
 
 ## 当前待办
 
-- [ ] 用户确认 VPN 已开后，再 `git push` 到 `origin`（`https://github.com/MirroR0102/Enterprise-Automation-Agent.git`）
 - [ ] 若有真实 DeepSeek + Tavily，按 `scripts/acceptance_check.md` 跑一遍联网验收句
 - [ ] 生产若要多副本：把 MemorySaver 换成 Postgres checkpointer（README 已记为后续）
 
@@ -79,7 +78,9 @@ Windows / PowerShell：用 `D:\anaconda\python.exe -m venv .venv` 建环境；�
 - Task 1–10：脚手架、JWT 登录（ops/dev）、SQL 防护、计算器/时间、MySQL schema+seed（含 `USE_MOCK_DB`）、Tavily/文件/KB Stub、LangGraph 8 轮与失败重试、日志、FastAPI 会话/事件/SSE/取消、静态前端、pytest
 - 本机 venv：`D:\anaconda\python.exe -m venv .venv`（Python 3.13.9）；`pytest -q` → **23 passed**
 - 默认账号 `ops/ops123`、`dev/dev123`
-- 远程 `origin` 已指向目标仓库；**尚未 push**（等用户确认 VPN）
+- 根目录规划稿 `2026-09-15-enterprise-ops-agent.md` 已纳入仓库；`*.docx` 已 gitignore，不上传
+- `TASK_TIMEOUT_S=30` 按规划固定，不放宽
+- 远程：`origin` → `https://github.com/MirroR0102/Enterprise-Automation-Agent.git`（用户已确认 VPN，执行 push）
 
 ---
 
