@@ -80,7 +80,7 @@ Windows / PowerShell：用 `D:\anaconda\python.exe -m venv .venv` 建环境；�
 - 默认账号 `ops/ops123`、`dev/dev123`
 - 根目录规划稿 `2026-09-15-enterprise-ops-agent.md` 已纳入仓库；`*.docx` 已 gitignore，不上传
 - `TASK_TIMEOUT_S=30` 按规划固定，不放宽
-- 远程：`origin` → `https://github.com/MirroR0102/Enterprise-Automation-Agent.git`（用户已确认 VPN，执行 push）
+- 已推送 `main` → `origin`（`https://github.com/MirroR0102/Enterprise-Automation-Agent`）；直连失败时用本机代理 `127.0.0.1:7892`
 
 ---
 
