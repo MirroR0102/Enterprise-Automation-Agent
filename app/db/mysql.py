@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import sqlite3
 import threading
 from contextlib import contextmanager
@@ -43,7 +44,11 @@ def parse_mysql_dsn(dsn: str) -> MysqlParts:
 
 
 def sqlite_path() -> Path:
-    path = ROOT_DIR / "data" / "mock.db"
+    override = os.environ.get("MOCK_DB_PATH", "").strip()
+    if override:
+        path = Path(override)
+    else:
+        path = ROOT_DIR / "data" / "mock.db"
     path.parent.mkdir(parents=True, exist_ok=True)
     return path
 
@@ -67,7 +72,20 @@ def reset_sqlite_for_tests() -> None:
             _sqlite_conn = None
         path = sqlite_path()
         if path.exists():
-            path.unlink()
+            try:
+                path.unlink()
+            except PermissionError:
+                # Another process may hold the file; fall back to truncating tables.
+                conn = sqlite3.connect(str(path), check_same_thread=False)
+                try:
+                    conn.executescript(
+                        "DROP TABLE IF EXISTS agent_logs;"
+                        "DROP TABLE IF EXISTS sales;"
+                        "DROP TABLE IF EXISTS users;"
+                    )
+                    conn.commit()
+                finally:
+                    conn.close()
 
 
 def _mysql_connect(database: str | None = None):

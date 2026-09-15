@@ -168,10 +168,30 @@ docs/superpowers/plans/  实现规划（与根目录同名稿一致）
 
 产品 brief 的 `.docx` 仅本地参考，已在 `.gitignore`，不会上传。
 
+## 联调问题记录（项目报告素材）
+
+> 记录真实验收中踩过的坑，便于写报告「问题与解决」。
+
+### 2026-09-15：验收句 SQL 列名错误导致整条任务终止
+
+| 项 | 内容 |
+| --- | --- |
+| 场景 | 登录后发送验收句：搜索 2026 AI 新闻 → 查本月销售 → 算同比 → 生成 Markdown 周报 |
+| 现象 | 时间线出现 `mysql_query` 后立刻 `error`：`工具连续失败两次，已停止：查询执行失败: no such column: order_date` |
+| Agent 实际 SQL | `SELECT SUM(amount) AS total_sales FROM sales WHERE order_date >= DATE_FORMAT(CURDATE(), '%Y-%m-01')` |
+| 正确表结构 | `sales(sale_date, amount, region)`（种子数据本月合计 100000，去年同月 80000） |
+| 根因 1 | LLM 臆造列名 `order_date`，系统提示/工具说明未写明真实 schema |
+| 根因 2 | `run_mysql_query` 对执行失败 `raise RuntimeError`，经 ToolNode 变成工具异常；图侧「失败重试 1 次仍失败则 `status=failed` 并停止」把**可纠正的 SQL 错误**当成致命失败，Agent 无法改 SQL 再查 |
+| 次要风险 | mock 为 SQLite 时，`CURDATE()` / `DATE_FORMAT` 本身也不兼容，即便列名对了也可能再失败 |
+| 修复 | （1）`SYSTEM_PROMPT` 与 `mysql_query` docstring 写明 `sale_date` 及字面量日期示例；（2）SQL 执行失败改为**返回错误字符串**（不抛异常），提示核对表结构后重试；（3）README/AGENT 同步口径 |
+| 涉及文件 | `app/agent/prompts.py`、`app/tools/mysql_query.py`、`tests/test_mysql_query.py` |
+| 结论（可写进报告） | 有状态 Agent 的「工具失败即停」适合真正的不可恢复故障；对 LLM 易写错的 SQL，应把校验/执行错误回传给模型做自纠，并用 schema 约束降低胡编列名概率 |
+
 ## 常见问题
 
 - **Tavily 未配置**：工具返回明确错误，周报应写明未检索到公开新闻，而不是编造。
 - **DeepSeek 401/超时**：检查 `DEEPSEEK_API_KEY`；任务超时固定 `TASK_TIMEOUT_S=30`（规划要求，勿擅自放宽）。
+- **SQL 写错列名**：见上文「联调问题记录」；业务表是 `sales(sale_date, amount, region)`，不是 `order_date`。
 - **MemorySaver 进程内记忆**：多副本/重启丢会话图状态；日志仍在 DB。后续可换 Postgres checkpointer。
 - 远程仓库：https://github.com/MirroR0102/Enterprise-Automation-Agent
 

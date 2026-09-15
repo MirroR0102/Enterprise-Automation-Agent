@@ -34,12 +34,24 @@ def run_mysql_query(sql: str) -> str:
 
     try:
         rows = execute_readonly_query(sql.rstrip(";").strip())
-    except Exception as exc:  # noqa: BLE001
-        raise RuntimeError(f"查询执行失败: {exc}") from exc
+    except Exception as exc:  # noqa: BLE001 — return to agent so it can correct SQL
+        return (
+            f"查询执行失败: {exc}。"
+            "请核对表结构后重试。业务表 sales 字段为 sale_date / amount / region；"
+            "mock/SQLite 模式下请用字面量日期范围，不要用 CURDATE()/DATE_FORMAT。"
+        )
     return json.dumps(rows, ensure_ascii=False, default=str)
 
 
 @tool
 def mysql_query(sql: str) -> str:
-    """对业务库执行只读 SELECT。用于查询销售额等指标。禁止 DROP/DELETE/UPDATE 等写语句。"""
+    """对业务库执行只读 SELECT。用于查询销售额等指标。
+
+    表 sales 字段：sale_date (DATE), amount (数值), region (文本)。
+    本月合计示例：
+    SELECT SUM(amount) AS total FROM sales WHERE sale_date >= '2026-09-01' AND sale_date < '2026-10-01'
+    去年同月示例：
+    SELECT SUM(amount) AS total FROM sales WHERE sale_date >= '2025-09-01' AND sale_date < '2025-10-01'
+    禁止 DROP/DELETE/UPDATE 等写语句；列名不要用 order_date。
+    """
     return run_mysql_query(sql)

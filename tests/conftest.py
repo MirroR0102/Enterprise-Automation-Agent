@@ -1,5 +1,9 @@
 import os
+import tempfile
+from pathlib import Path
 
+_TEST_DB = Path(tempfile.gettempdir()) / f"enterprise_ops_pytest_{os.getpid()}.db"
+os.environ["MOCK_DB_PATH"] = str(_TEST_DB)
 os.environ.setdefault("USE_MOCK_DB", "true")
 os.environ.setdefault("JWT_SECRET", "test-jwt-secret-not-for-prod-32b")
 os.environ.setdefault("LLM_PROVIDER", "deepseek")

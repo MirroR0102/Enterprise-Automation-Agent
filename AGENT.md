@@ -81,6 +81,8 @@ Windows / PowerShell：用 `D:\anaconda\python.exe -m venv .venv` 建环境；�
 - 根目录规划稿 `2026-09-15-enterprise-ops-agent.md` 已纳入仓库；`*.docx` 已 gitignore，不上传
 - `TASK_TIMEOUT_S=30` 按规划固定，不放宽
 - 已推送 `main` → `origin`（`https://github.com/MirroR0102/Enterprise-Automation-Agent`）；直连失败时用本机代理 `127.0.0.1:7892`
+- SQL 工具：错误列名等执行失败改为返回可读错误（不抛异常），系统提示与工具说明写明 `sales(sale_date, amount, region)`，避免整条任务因一次写错列名而终止
+- 联调问题（`order_date` / 工具失败即停）已写入 `README.md`「联调问题记录」，供项目报告引用；勿删该节
 
 ---
 
