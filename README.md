@@ -1,0 +1,177 @@
+# 企业业务流程自动化 Agent
+
+面向运营人员的有状态 Agent：接收自然语言复杂任务，用 **LangGraph StateGraph** 拆解并调用工具（Tavily 搜索、计算器、时间、只读 MySQL、本地 Markdown 读写），最多 8 轮工具调用，经 FastAPI 提供登录、会话隔离与执行过程可视化，最终输出 Markdown 周报。
+
+仓库：https://github.com/MirroR0102/Enterprise-Automation-Agent
+
+智能体请读 [`AGENT.md`](AGENT.md)，不要把本文件当操作手册。
+
+## 架构
+
+```text
+浏览器 (login / 工作台 / 开发日志)
+    → FastAPI (JWT)
+        → 会话运行时 + 取消标志
+        → LangGraph StateGraph + MemorySaver(thread_id=session_id)
+            agent ⇄ tools → finalize
+        → 工具：web_search / calculator / current_time / mysql_query /
+                 write_markdown_report / read_markdown_report /
+                 enterprise_knowledge_search（默认 Stub）
+        → SQLite mock 或 MySQL（users / sales / agent_logs）
+```
+
+## 环境要求
+
+- Python 3.11+
+- 默认不需要本机 MySQL（`USE_MOCK_DB=true`）
+- 真实对话需要 `DEEPSEEK_API_KEY`；联网搜索需要 `TAVILY_API_KEY`
+
+## 启动
+
+本机推荐用 Anaconda 的 Python 3.13.9：`D:\anaconda\python.exe`。
+
+```powershell
+cd <本项目目录>
+D:\anaconda\python.exe -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+copy .env.example .env
+# 编辑 .env：填 DEEPSEEK_API_KEY；搜索再填 TAVILY_API_KEY
+.\.venv\Scripts\python.exe scripts\init_db.py
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+打开 http://127.0.0.1:8000 （未登录跳转登录页）。API 文档：http://127.0.0.1:8000/docs
+
+### 演示账号
+
+| 用户名 | 密码 | 角色 |
+| --- | --- | --- |
+| `ops` | `ops123` | 运营：对话、看自己的执行过程 |
+| `dev` | `dev123` | 开发：另外可看 `/logs.html` 与 `GET /api/logs` |
+
+密码只作本地演示，库中存 PBKDF2 哈希。
+
+### LLM 切换
+
+| `LLM_PROVIDER` | 需要的变量 | 默认模型 |
+| --- | --- | --- |
+| `deepseek`（默认） | `DEEPSEEK_API_KEY`，`DEEPSEEK_BASE_URL` | `deepseek-chat` |
+| `openai`（演示） | `OPENAI_API_KEY` | `gpt-4o-mini` |
+| `qwen`（预留） | `QWEN_API_KEY`，`QWEN_BASE_URL` | `Qwen2-72B-Instruct` |
+
+密钥只放 `.env`，不要提交。
+
+### MySQL
+
+- 无 MySQL：保持 `USE_MOCK_DB=true`，数据在 `data/mock.db`（已 gitignore）
+- 有 MySQL：`USE_MOCK_DB=false`，设置 `MYSQL_DSN=mysql://user:pass@host:3306/enterprise_ops`，再运行 `scripts/init_db.py`。亦可手工执行 `app/db/schema.sql` 与 `app/db/seed.sql`（用户哈希仍建议用 init 脚本写入）
+
+种子销售：2026-09 合计 100000，2025-09 合计 80000，同比 25%。
+
+## 验收句
+
+登录后发送：
+
+`帮我搜索2026AI行业新闻，再查询本月销售总额，计算同比增长率，生成一份运营周报markdown`
+
+期望自动调用搜索、数据库、计算器（建议再写入 `reports/`），并给出完整 Markdown。逐步时间线可见思考、工具名、入参、返回。详见 `scripts/acceptance_check.md`。
+
+真实 LLM + 搜索可能超过默认 `TASK_TIMEOUT_S=30`，可按环境加大。
+
+## 测试
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest -q
+```
+
+单测用 mock DB，不打真实 DeepSeek / Tavily / MySQL。
+
+## 主要 API
+
+均需登录（`Authorization: Bearer <token>`），除登录本身。
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| POST | `/api/auth/login` | `{username,password}` → `{access_token,token_type,role}` |
+| GET | `/api/auth/me` | 当前用户 |
+| POST | `/api/sessions` | 创建会话 → `{session_id}` |
+| POST | `/api/sessions/{id}/messages` | `{content}` 后台启动 Agent |
+| GET | `/api/sessions/{id}/events` | 事件列表（前端时间线轮询） |
+| GET | `/api/sessions/{id}/stream` | SSE |
+| POST | `/api/sessions/{id}/cancel` | 合作式取消 |
+| GET | `/api/logs?session_id=&limit=` | **仅 dev** |
+| GET | `/api/health` | 存活 |
+
+事件 JSON：
+
+```json
+{
+  "type": "thought|tool_call|tool_result|final|error|cancelled|max_rounds|timeout",
+  "timestamp": "ISO-8601",
+  "content": "文本或摘要",
+  "tool": "可选工具名",
+  "input": "可选入参",
+  "output": "可选返回"
+}
+```
+
+硬限制：最多 **8** 轮工具；工具失败 **重试 1 次** 仍失败则停止；任务 **30 秒**超时（可配）；SQL 只允许单条 SELECT，拦截 drop/alter/delete/truncate/insert/update/create/grant/revoke。
+
+## 日志保留
+
+`agent_logs` 带 `created_at`，默认保留 60 天。可定期执行：
+
+```powershell
+.\.venv\Scripts\python.exe scripts\purge_logs.py
+```
+
+## 第 3 部分知识库对接（预留）
+
+默认 `KB_ENABLED=false`，工具 `enterprise_knowledge_search` 走 Stub：`hit=false`，文案「当前未接入企业内部知识库」，**不编造**业务内容。验收句不依赖知识库。
+
+启用时：
+
+- `KB_ENABLED=true`
+- `KB_BASE_URL`（客户端 POST `{KB_BASE_URL}/api/v1/qa`）
+- 可选 `KB_API_KEY`（Bearer）
+- `KB_TIMEOUT_S=3`
+
+请求：
+
+```json
+{ "question": "差旅标准", "top_k": 5, "session_id": "可选" }
+```
+
+响应建议：
+
+```json
+{
+  "answer": "...",
+  "hit": true,
+  "citations": [{ "doc_name": "制度.pdf", "page": 3, "snippet": "..." }]
+}
+```
+
+失败按普通工具失败处理（再试 1 次），不要在 3 号服务里实现文档上传/向量库（那是 3 号的范围）。3 号侧请提供稳定 HTTP QA 与明确 `hit=false`。
+
+## 目录
+
+```text
+app/           FastAPI + LangGraph + 工具 + DB
+web/           登录 / 工作台 / 开发日志
+reports/       Agent 可写的 Markdown
+tests/         pytest
+scripts/       init_db / purge_logs / 验收说明
+docs/superpowers/plans/  实现规划
+```
+
+## 常见问题
+
+- **Tavily 未配置**：工具返回明确错误，周报应写明未检索到公开新闻，而不是编造。
+- **DeepSeek 401/超时**：检查 `DEEPSEEK_API_KEY` 与 `TASK_TIMEOUT_S`。
+- **MemorySaver 进程内记忆**：多副本/重启丢会话图状态；日志仍在 DB。后续可换 Postgres checkpointer。
+- **不要 git push**：直到明确说 VPN 已开并允许推送到 `https://github.com/MirroR0102/Enterprise-Automation-Agent`。
+
+## 明确不做
+
+OAuth/SSO、细粒度 RBAC、K8s、真实数仓、第 3 部分 RAG 本体、移动端 App。

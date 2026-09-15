@@ -1,0 +1,14 @@
+[project]
+name = "enterprise-ops-agent"
+version = "0.1.0"
+description = "Enterprise operations automation agent (LangGraph + FastAPI)"
+requires-python = ">=3.11"
+readme = "README.md"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]

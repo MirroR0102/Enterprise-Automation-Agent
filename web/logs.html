@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>执行日志 · Ops Agent</title>
+  <link rel="stylesheet" href="/app.css" />
+</head>
+<body>
+  <div class="shell">
+    <div class="top">
+      <div class="brand">开发日志</div>
+      <div>
+        <a href="/">返回工作台</a>
+        <button class="ghost" id="logout">退出</button>
+      </div>
+    </div>
+    <div class="card">
+      <p class="hint" id="msg">仅 dev 角色可查看全部工具调用日志。保留 60 天，可用 scripts/purge_logs.py 清理。</p>
+      <div class="row">
+        <input id="sid" placeholder="按 session_id 筛选（可空）" />
+        <button class="primary" id="load">刷新</button>
+      </div>
+      <div class="timeline" id="list" style="margin-top:1rem"></div>
+    </div>
+  </div>
+  <script src="/common.js"></script>
+  <script>
+    requireLogin();
+    document.getElementById("logout").onclick = () => { clearSession(); location.href = "/login.html"; };
+    if (getRole() !== "dev") {
+      document.getElementById("msg").textContent = "当前账号无权查看开发日志（需要 dev）。";
+    }
+    async function load() {
+      const sid = document.getElementById("sid").value.trim();
+      const qs = sid ? `?session_id=${encodeURIComponent(sid)}` : "";
+      const res = await api("/api/logs" + qs);
+      const list = document.getElementById("list");
+      if (res.status === 403) {
+        list.innerHTML = "<p class='error'>权限不足</p>";
+        return;
+      }
+      const body = await res.json();
+      list.innerHTML = "";
+      for (const ev of body.items || []) {
+        const div = document.createElement("div");
+        div.className = "event " + (ev.type || "");
+        div.innerHTML = `<div class="meta">${ev.timestamp || ""} · ${ev.type || ev.event_type} · ${ev.session_id || ""}</div>`;
+        const pre = document.createElement("pre");
+        pre.textContent = JSON.stringify(ev, null, 2);
+        div.appendChild(pre);
+        list.appendChild(div);
+      }
+    }
+    document.getElementById("load").onclick = load;
+    if (getRole() === "dev") load();
+  </script>
+</body>
+</html>

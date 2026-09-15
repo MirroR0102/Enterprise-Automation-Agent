@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>登录 · 运营 Agent</title>
+  <link rel="stylesheet" href="/app.css" />
+</head>
+<body>
+  <div class="login-wrap">
+    <form class="card login-card" id="form">
+      <h1 class="brand">Enterprise <span>Ops Agent</span></h1>
+      <p class="hint">运营对话与开发日志都需要先登录。演示账号 ops/ops123、dev/dev123。</p>
+      <label>用户名</label>
+      <input name="username" autocomplete="username" required />
+      <label style="margin-top:0.6rem;display:block">密码</label>
+      <input name="password" type="password" autocomplete="current-password" required />
+      <p class="error" id="err"></p>
+      <button class="primary" type="submit" style="width:100%">登录</button>
+    </form>
+  </div>
+  <script src="/common.js"></script>
+  <script>
+    if (getToken()) location.href = "/";
+    document.getElementById("form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const data = Object.fromEntries(new FormData(event.target));
+      const err = document.getElementById("err");
+      err.textContent = "";
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        err.textContent = body.detail || "登录失败";
+        return;
+      }
+      setSession(body.access_token, body.role);
+      location.href = "/";
+    });
+  </script>
+</body>
+</html>
