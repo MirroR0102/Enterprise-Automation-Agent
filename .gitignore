@@ -17,3 +17,7 @@ reports/*.md
 .DS_Store
 Thumbs.db
 *.docx
+docs/presentation/*.pptx
+docs/presentation/*.pdf
+!docs/presentation/.gitkeep
+!docs/presentation/README.md
