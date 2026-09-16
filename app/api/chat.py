@@ -15,6 +15,7 @@ from app.agent.nodes import make_event
 from app.auth.deps import get_current_user
 from app.auth.models import User
 from app.config import get_settings
+from app.db import user_store
 from app.logging_service import log_event
 from app.runtime import (
     SessionRecord,
@@ -44,8 +45,10 @@ def _owned(session_id: str, user: User) -> SessionRecord:
 
 @router.post("/sessions")
 def create_chat_session(user: User = Depends(get_current_user)) -> dict:
+    user_store.ensure_user_store(user.id)
     session_id = str(uuid.uuid4())
     create_session(session_id, user.id)
+    user_store.ensure_conversation(user.id, session_id, title="新对话")
     return {"session_id": session_id}
 
 
@@ -62,6 +65,11 @@ async def post_message(
     user_event = make_event("user_input", body.content)
     rec.events.append(user_event)
     log_event(session_id, "user_input", user_event, user_id=user.id)
+    try:
+        user_store.add_message(user.id, session_id, "user", body.content)
+        user_store.add_tool_event(user.id, session_id, user_event)
+    except Exception:
+        pass
     clear_cancelled(session_id)
     task = asyncio.create_task(_run_agent(rec, body.content, user.id))
     rec.task = task
@@ -153,12 +161,24 @@ async def _run_agent(rec: SessionRecord, content: str, user_id: int) -> None:
         result_status = result.get("status") or "completed"
         if _has_final_event(rec) or result_status == "completed":
             rec.status = "completed"
+            final_text = _final_text(result) or _final_from_events(rec)
             log_event(
                 rec.session_id,
                 "final",
-                {"type": "final", "content": _final_text(result)},
+                {"type": "final", "content": final_text},
                 user_id=user_id,
             )
+            try:
+                if final_text:
+                    user_store.add_message(user_id, rec.session_id, "assistant", final_text)
+                    user_store.save_weekly_report(
+                        user_id,
+                        rec.session_id,
+                        final_text,
+                        file_relpath="reports/",
+                    )
+            except Exception:
+                pass
             return
         if is_cancelled(rec.session_id):
             rec.status = "cancelled"
@@ -199,3 +219,10 @@ def _final_text(result: dict) -> str:
         return ""
     last = messages[-1]
     return getattr(last, "content", "") or ""
+
+
+def _final_from_events(rec: SessionRecord) -> str:
+    for event in reversed(rec.events):
+        if event.get("type") == "final":
+            return str(event.get("content") or "")
+    return ""

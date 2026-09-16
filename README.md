@@ -20,7 +20,7 @@
         → SQLite mock 或 MySQL（users / sales / agent_logs）
 ```
 
-工作台为浅色双栏：左「运营周报 Agent / 知识库问答（第 3 部分占位）」+ 左下角用户头像；右为主区。周报页底部输入；执行过程优先全宽，出 Markdown 后右侧分屏预览。状态芯片中文；仅执行中可取消。
+工作台为浅色双栏：左「运营周报 Agent / 知识库问答（第 3 部分占位）」+ 左下角昵称/登录名；右为主区。周报页底部输入；执行过程优先全宽，出 Markdown 后右侧分屏预览。顶栏有「过往周报」「新开对话」。同会话可追问（MemorySaver）；仅「新开对话」重置 session。成功周报写入每用户分库（MySQL `eoa_u_{id}` 或 mock `data/users/u_{id}.db`）。
 
 ## 环境要求
 
@@ -101,6 +101,8 @@ copy .env.example .env
 | GET | `/api/sessions/{id}/events` | 事件列表（前端时间线轮询） |
 | GET | `/api/sessions/{id}/stream` | SSE |
 | POST | `/api/sessions/{id}/cancel` | 合作式取消（仅 running；已完成/已有 final 时保持原终态，`ok:false`） |
+| GET | `/api/reports` | 当前用户过往周报列表（每用户分库） |
+| GET | `/api/reports/{id}` | 单份周报 Markdown |
 | GET | `/api/logs?session_id=&limit=` | **仅 dev** |
 | GET | `/api/health` | 存活 |
 

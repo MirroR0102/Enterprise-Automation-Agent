@@ -88,20 +88,24 @@ def reset_sqlite_for_tests() -> None:
                     conn.close()
 
 
-def _mysql_connect(database: str | None = None):
+def _mysql_connect(database: str | None = ...):  # type: ignore[assignment]
     import pymysql
 
     parts = parse_mysql_dsn(get_settings().mysql_dsn)
-    return pymysql.connect(
-        host=parts.host,
-        port=parts.port,
-        user=parts.user,
-        password=parts.password,
-        database=database if database is not None else parts.database,
-        charset="utf8mb4",
-        cursorclass=pymysql.cursors.DictCursor,
-        autocommit=True,
-    )
+    kwargs: dict[str, Any] = {
+        "host": parts.host,
+        "port": parts.port,
+        "user": parts.user,
+        "password": parts.password,
+        "charset": "utf8mb4",
+        "cursorclass": pymysql.cursors.DictCursor,
+        "autocommit": True,
+    }
+    if database is ...:
+        kwargs["database"] = parts.database
+    elif database:
+        kwargs["database"] = database
+    return pymysql.connect(**kwargs)
 
 
 @contextmanager

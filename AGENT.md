@@ -89,6 +89,7 @@ Windows / PowerShell：用 `D:\anaconda\python.exe -m venv .venv` 建环境；�
 - 30 分钟汇报材料已生成到 `docs/presentation/`（PPTX + 演讲稿 PDF，gitignore，不 push）；重要改动后须同步更新（见硬约束第 15 条）
 - 2026-09-16：取消与终态互斥（完成后点取消仍保持 completed）；工作台浅色壳 + 左侧「运营周报 / 知识库占位」能力栏；状态中文芯片
 - 2026-09-16 交互改版：底部 composer、侧栏左下头像、过程全宽、final 后右侧分屏预览（可收起）、取消仅 running 可点
+- 2026-09-16：M1/U1–U6/DB1 — 同会话记忆、发送清空、昵称设置、入参默认展开、每用户分库 `eoa_u_{id}` + 过往周报；汇报材料 P0–P4 仍待做
 
 ---
 
@@ -97,6 +98,8 @@ Windows / PowerShell：用 `D:\anaconda\python.exe -m venv .venv` 建环境；�
 见 README「主要 API」。会话键：`configurable.thread_id = session_id`。
 
 取消：`POST /api/sessions/{id}/cancel`。仅 `running` 时可取消；若已是 `completed`/`failed`/`timeout`/`max_rounds`，或事件中已有 `final`，**不得**改写成 `cancelled`（返回 `ok:false` 并保持原终态）。图节点仍检查取消标志；迟到的取消在已有报告时视为成功完成。
+
+过往周报：`GET /api/reports` / `GET /api/reports/{id}`，数据在每用户分库（`app/db/user_store.py`），与销售业务库分离。
 
 ---
 

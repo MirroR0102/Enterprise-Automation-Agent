@@ -8,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from app.api.auth import router as auth_router
 from app.api.chat import router as chat_router
 from app.api.logs import router as logs_router
+from app.api.reports import router as reports_router
 from app.config import ROOT_DIR
 from app.db.mysql import init_schema_and_seed
 
@@ -29,6 +30,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(chat_router)
 app.include_router(logs_router)
+app.include_router(reports_router)
 
 
 @app.get("/api/health")

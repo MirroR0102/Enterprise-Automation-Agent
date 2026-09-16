@@ -211,9 +211,9 @@ textarea {
   display: flex;
   align-items: center;
   gap: 0.55rem;
-  padding: 0.65rem 0.5rem;
-  border-top: 1px solid var(--line);
+  padding: 0.75rem 0.5rem 0.35rem;
   margin-top: auto;
+  border-top: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
 }
 .user-card .avatar {
   width: 36px;
@@ -226,6 +226,9 @@ textarea {
   font-weight: 700;
   font-size: 0.85rem;
   flex-shrink: 0;
+  border: none;
+  cursor: pointer;
+  padding: 0;
 }
 .user-card .user-meta {
   min-width: 0;
@@ -233,7 +236,8 @@ textarea {
 }
 .user-card .user-meta strong {
   display: block;
-  font-size: 0.88rem;
+  font-size: 0.9rem;
+  font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -242,12 +246,89 @@ textarea {
   display: block;
   font-size: 0.72rem;
   color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.user-card .user-logout {
-  padding: 0.35rem 0.5rem;
+.session-meta {
+  font-size: 0.75rem;
+  margin-top: 0.15rem;
+}
+.io-block {
+  margin-top: 0.45rem;
+}
+.io-label {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-bottom: 0.2rem;
+}
+.io-block pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+  font-family: var(--mono);
   font-size: 0.78rem;
-  flex-shrink: 0;
+  color: #334155;
+  background: #fff;
+  border-radius: 8px;
+  padding: 0.5rem;
+  border: 1px solid var(--line);
+  max-height: 220px;
+  overflow: auto;
 }
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.35);
+  display: grid;
+  place-items: center;
+  z-index: 40;
+  padding: 1rem;
+}
+.modal-backdrop[hidden] { display: none !important; }
+.modal {
+  width: min(420px, 94vw);
+}
+.modal h3 { margin-top: 0; }
+.modal label {
+  display: block;
+  margin: 0.75rem 0 0.35rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.drawer {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.25);
+  z-index: 30;
+  display: flex;
+  justify-content: flex-end;
+}
+.drawer[hidden] { display: none !important; }
+.drawer-panel {
+  width: min(380px, 92vw);
+  height: 100%;
+  border-radius: 0;
+  overflow: auto;
+}
+.reports-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.report-item {
+  text-align: left;
+  padding: 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.report-item:hover { border-color: #c4b5fd; }
 
 .main {
   display: flex;

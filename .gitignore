@@ -10,6 +10,7 @@ __pycache__/
 .coverage
 htmlcov/
 data/
+data/users/
 reports/*.md
 !reports/.gitkeep
 .superpowers/sdd/
