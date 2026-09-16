@@ -3,25 +3,26 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>登录 · 运营 Agent</title>
+  <title>登录 · 运营业务自动化 Agent</title>
   <link rel="stylesheet" href="/app.css" />
 </head>
 <body>
   <div class="login-wrap">
-    <form class="card login-card" id="form">
-      <h1 class="brand">Enterprise <span>Ops Agent</span></h1>
-      <p class="hint">运营对话与开发日志都需要先登录。演示账号 ops/ops123、dev/dev123。</p>
-      <label>用户名</label>
-      <input name="username" autocomplete="username" required />
-      <label style="margin-top:0.6rem;display:block">密码</label>
-      <input name="password" type="password" autocomplete="current-password" required />
+    <form class="login-card" id="form">
+      <h1>运营业务自动化 Agent</h1>
+      <p class="sub">Enterprise Ops Agent · 第 4 部分工作台</p>
+      <p class="hint">演示账号：ops / ops123（运营），dev / dev123（开发）</p>
+      <label for="username">用户名</label>
+      <input id="username" name="username" autocomplete="username" required />
+      <label for="password">密码</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" required />
       <p class="error" id="err"></p>
-      <button class="primary" type="submit" style="width:100%">登录</button>
+      <button class="primary" type="submit" style="width:100%;margin-top:0.85rem">登录</button>
     </form>
   </div>
   <script src="/common.js"></script>
   <script>
-    if (getToken()) location.href = "/";
+    if (getToken()) location.href = "/#ops";
     document.getElementById("form").addEventListener("submit", async (event) => {
       event.preventDefault();
       const data = Object.fromEntries(new FormData(event.target));
@@ -38,7 +39,7 @@
         return;
       }
       setSession(body.access_token, body.role);
-      location.href = "/";
+      location.href = "/#ops";
     });
   </script>
 </body>

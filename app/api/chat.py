@@ -95,9 +95,32 @@ async def stream_events(session_id: str, user: User = Depends(get_current_user))
     return StreamingResponse(generate(), media_type="text/event-stream")
 
 
+NON_CANCELABLE = frozenset({"completed", "failed", "timeout", "max_rounds"})
+
+
+def _has_final_event(rec: SessionRecord) -> bool:
+    return any(e.get("type") == "final" for e in rec.events)
+
+
 @router.post("/sessions/{session_id}/cancel")
 async def cancel_session(session_id: str, user: User = Depends(get_current_user)) -> dict:
     rec = _owned(session_id, user)
+    if rec.status in NON_CANCELABLE:
+        return {
+            "ok": False,
+            "status": rec.status,
+            "reason": "任务已结束，无法取消",
+        }
+    if _has_final_event(rec):
+        rec.status = "completed"
+        return {
+            "ok": False,
+            "status": "completed",
+            "reason": "已有最终报告，忽略取消",
+        }
+    if rec.status not in {"running", "idle"}:
+        return {"ok": False, "status": rec.status, "reason": "当前状态不可取消"}
+
     set_cancelled(session_id, True)
     rec.status = "cancelled"
     event = make_event("cancelled", "任务已被人工终止")
@@ -126,19 +149,33 @@ async def _run_agent(rec: SessionRecord, content: str, user_id: int) -> None:
             graph.ainvoke(initial, config),
             timeout=settings.task_timeout_s,
         )
+        _merge_events(rec, result.get("events") or [])
+        result_status = result.get("status") or "completed"
+        if _has_final_event(rec) or result_status == "completed":
+            rec.status = "completed"
+            log_event(
+                rec.session_id,
+                "final",
+                {"type": "final", "content": _final_text(result)},
+                user_id=user_id,
+            )
+            return
         if is_cancelled(rec.session_id):
             rec.status = "cancelled"
             return
-        rec.status = result.get("status") or "completed"
-        _merge_events(rec, result.get("events") or [])
-        if rec.status == "completed":
-            log_event(rec.session_id, "final", {"type": "final", "content": _final_text(result)}, user_id=user_id)
+        rec.status = result_status
     except asyncio.TimeoutError:
+        if _has_final_event(rec):
+            rec.status = "completed"
+            return
         rec.status = "timeout"
         event = make_event("timeout", f"任务超过 {settings.task_timeout_s} 秒，已强制终止。")
         rec.events.append(event)
         log_event(rec.session_id, "timeout", event, user_id=user_id)
     except asyncio.CancelledError:
+        if _has_final_event(rec):
+            rec.status = "completed"
+            return
         rec.status = "cancelled"
         raise
     except Exception as exc:  # noqa: BLE001

@@ -3,45 +3,174 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>运营工作台 · Ops Agent</title>
+  <title>运营业务自动化 Agent</title>
   <link rel="stylesheet" href="/app.css" />
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
-  <div class="shell">
-    <div class="top">
-      <div class="brand">Enterprise <span>Ops Agent</span></div>
-      <div>
-        <span class="badge" id="who"></span>
-        <a href="/logs.html" id="logsLink" hidden>日志</a>
-        <button class="ghost" id="logout">退出</button>
+  <div class="app-frame">
+    <aside class="sidebar">
+      <div class="logo">
+        <span class="dot" aria-hidden="true"></span>
+        <div>
+          <strong>运营业务自动化 Agent</strong>
+          <span>Enterprise Ops Agent</span>
+        </div>
       </div>
-    </div>
-    <div class="card" style="margin-bottom:1rem">
-      <textarea id="prompt">帮我搜索2026AI行业新闻，再查询本月销售总额，计算同比增长率，生成一份运营周报markdown</textarea>
-      <div class="row">
-        <button class="primary" id="send">发送任务</button>
-        <button id="cancel">取消</button>
-        <span class="hint" id="status">就绪</span>
-      </div>
-    </div>
-    <div class="grid">
-      <section class="card">
-        <h3>执行过程</h3>
-        <div class="timeline" id="timeline"></div>
+      <ul class="nav-list" id="navList"></ul>
+      <div class="sidebar-foot">后续可接入第 1 / 2 / 5 部分能力入口</div>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <h2 id="panelTitle">运营周报 Agent</h2>
+        <div class="actions">
+          <span class="badge" id="who"></span>
+          <a href="/logs.html" id="logsLink" hidden>开发日志</a>
+          <button class="ghost" type="button" id="logout">退出</button>
+        </div>
+      </header>
+
+      <section class="panel" id="panel-ops">
+        <div class="card composer">
+          <textarea id="prompt">帮我搜索2026AI行业新闻，再查询本月销售总额，计算同比增长率，生成一份运营周报markdown</textarea>
+          <div class="row">
+            <button class="primary" type="button" id="send">发送任务</button>
+            <button class="ghost" type="button" id="cancel" disabled>取消</button>
+            <span class="status-chip idle" id="status">就绪</span>
+          </div>
+        </div>
+        <div class="grid">
+          <section class="card">
+            <h3 class="panel-title">执行过程</h3>
+            <div class="timeline" id="timeline"></div>
+          </section>
+          <section class="card">
+            <h3 class="panel-title">最终 Markdown</h3>
+            <div class="md-body" id="report"><p class="hint">完成后会渲染在这里。</p></div>
+          </section>
+        </div>
       </section>
-      <section class="card">
-        <h3>最终 Markdown</h3>
-        <div class="md-body" id="report"><p class="hint">完成后会渲染在这里。</p></div>
+
+      <section class="panel" id="panel-kb" hidden>
+        <div class="card kb-hero">
+          <h3>知识库问答（第 3 部分）</h3>
+          <p>
+            本能力由第 3 部分「企业内部知识库问答（RAG）」提供。当前仓库<strong>仅预留对接</strong>，不包含向量库、文档上传或 Reranker。
+          </p>
+          <ul>
+            <li>工具预留名：<span class="pill">enterprise_knowledge_search</span></li>
+            <li>开关：<span class="pill">KB_ENABLED=false</span>（默认 Stub，不编造业务内容）</li>
+            <li>启用后配置：<span class="pill">KB_BASE_URL</span> + 可选 <span class="pill">KB_API_KEY</span></li>
+          </ul>
+          <div class="kb-box">
+            <input id="kbQuestion" placeholder="试问一句（Stub 演示，不会检索真实文档）" />
+            <div class="row" style="margin-top:0">
+              <button class="primary" type="button" id="kbAsk">试问</button>
+              <a id="kbOpen" href="#" hidden target="_blank" rel="noopener">打开知识库服务</a>
+            </div>
+            <div class="kb-result" id="kbResult">尚未提问。Stub 固定返回「当前未接入企业内部知识库」。</div>
+          </div>
+        </div>
       </section>
     </div>
   </div>
+
   <script src="/common.js"></script>
   <script>
     requireLogin();
     document.getElementById("who").textContent = getRole();
     if (getRole() === "dev") document.getElementById("logsLink").hidden = false;
     document.getElementById("logout").onclick = () => { clearSession(); location.href = "/login.html"; };
+
+    const CAPABILITIES = [
+      {
+        id: "ops-report",
+        hash: "ops",
+        title: "运营周报 Agent",
+        desc: "第 4 部分 · 工具编排生成周报",
+        swatch: "ops",
+        panel: "panel-ops",
+      },
+      {
+        id: "kb-qa",
+        hash: "kb",
+        title: "知识库问答",
+        desc: "第 3 部分 · 文档问答（预留）",
+        swatch: "kb",
+        panel: "panel-kb",
+      },
+    ];
+
+    const STATUS_LABELS = {
+      idle: "就绪",
+      running: "执行中",
+      completed: "已完成",
+      cancelled: "已取消",
+      failed: "失败",
+      timeout: "超时",
+      max_rounds: "达到最大轮次",
+    };
+    const EVENT_LABELS = {
+      user_input: "用户输入",
+      thought: "思考",
+      tool_call: "调用工具",
+      tool_result: "工具返回",
+      final: "最终结果",
+      error: "错误",
+      cancelled: "已取消",
+      timeout: "超时",
+      max_rounds: "达到最大轮次",
+    };
+    const TERMINAL = ["completed", "failed", "cancelled", "timeout", "max_rounds"];
+
+    const navList = document.getElementById("navList");
+    const panelTitle = document.getElementById("panelTitle");
+    const statusEl = document.getElementById("status");
+    const cancelBtn = document.getElementById("cancel");
+    const sendBtn = document.getElementById("send");
+
+    function setStatus(code) {
+      const key = code || "idle";
+      statusEl.textContent = STATUS_LABELS[key] || key;
+      statusEl.className = "status-chip " + key;
+      const running = key === "running";
+      cancelBtn.disabled = !running;
+      if (TERMINAL.includes(key) || key === "idle") {
+        sendBtn.disabled = false;
+      }
+    }
+
+    function switchCapability(id) {
+      const cap = CAPABILITIES.find((c) => c.id === id) || CAPABILITIES[0];
+      CAPABILITIES.forEach((c) => {
+        document.getElementById(c.panel).hidden = c.id !== cap.id;
+      });
+      panelTitle.textContent = cap.title;
+      [...navList.querySelectorAll(".nav-item")].forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.id === cap.id);
+      });
+      location.hash = cap.hash;
+    }
+
+    CAPABILITIES.forEach((cap) => {
+      const li = document.createElement("li");
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "nav-item";
+      btn.dataset.id = cap.id;
+      btn.innerHTML = `<span class="swatch ${cap.swatch}"></span><span><span class="label">${cap.title}</span><span class="desc">${cap.desc}</span></span>`;
+      btn.onclick = () => switchCapability(cap.id);
+      li.appendChild(btn);
+      navList.appendChild(li);
+    });
+
+    function capFromHash() {
+      const h = (location.hash || "#ops").replace("#", "");
+      return CAPABILITIES.find((c) => c.hash === h)?.id || "ops-report";
+    }
+    switchCapability(capFromHash());
+    window.addEventListener("hashchange", () => switchCapability(capFromHash()));
 
     let sessionId = "";
     let pollTimer = null;
@@ -61,17 +190,32 @@
       for (const ev of events || []) {
         const div = document.createElement("div");
         div.className = "event " + (ev.type || "");
-        const tool = ev.tool ? ` · ${ev.tool}` : "";
-        div.innerHTML = `<div class="meta">${ev.timestamp || ""} · ${ev.type}${tool}</div><div>${ev.content || ""}</div>`;
+        const typeLabel = EVENT_LABELS[ev.type] || ev.type || "";
+        const meta = document.createElement("div");
+        meta.className = "meta";
+        meta.innerHTML = `${ev.timestamp || ""} · ${typeLabel}`;
+        if (ev.tool) {
+          meta.innerHTML += ` · <span class="pill">${ev.tool}</span>`;
+        }
+        div.appendChild(meta);
+        const content = document.createElement("div");
+        content.textContent = ev.content || "";
+        div.appendChild(content);
         if (ev.input) {
+          const details = document.createElement("details");
+          details.innerHTML = "<summary>入参</summary>";
           const pre = document.createElement("pre");
-          pre.textContent = "入参: " + ev.input;
-          div.appendChild(pre);
+          pre.textContent = ev.input;
+          details.appendChild(pre);
+          div.appendChild(details);
         }
         if (ev.output) {
+          const details = document.createElement("details");
+          details.innerHTML = "<summary>返回</summary>";
           const pre = document.createElement("pre");
-          pre.textContent = "返回: " + ev.output;
-          div.appendChild(pre);
+          pre.textContent = ev.output;
+          details.appendChild(pre);
+          div.appendChild(details);
         }
         box.appendChild(div);
         if (ev.type === "final") finalMd = ev.content || "";
@@ -86,21 +230,24 @@
       if (!sessionId) return;
       const res = await api(`/api/sessions/${sessionId}/events`);
       const body = await res.json();
-      document.getElementById("status").textContent = body.status || "";
+      setStatus(body.status || "idle");
       renderEvents(body.events);
-      const done = ["completed", "failed", "cancelled", "timeout", "max_rounds"];
-      if (done.includes(body.status)) {
+      if (TERMINAL.includes(body.status)) {
         clearInterval(pollTimer);
         pollTimer = null;
-        document.getElementById("send").disabled = false;
+        sendBtn.disabled = false;
+        cancelBtn.disabled = true;
       }
     }
 
-    document.getElementById("send").onclick = async () => {
+    sendBtn.onclick = async () => {
       const content = document.getElementById("prompt").value.trim();
       if (!content) return;
-      document.getElementById("send").disabled = true;
+      sendBtn.disabled = true;
+      cancelBtn.disabled = false;
+      setStatus("running");
       document.getElementById("report").innerHTML = '<p class="hint">执行中…</p>';
+      document.getElementById("timeline").innerHTML = "";
       sessionId = "";
       await ensureSession();
       const res = await api(`/api/sessions/${sessionId}/messages`, {
@@ -108,8 +255,9 @@
         body: JSON.stringify({ content }),
       });
       if (!res.ok) {
-        document.getElementById("status").textContent = "发送失败";
-        document.getElementById("send").disabled = false;
+        setStatus("failed");
+        sendBtn.disabled = false;
+        cancelBtn.disabled = true;
         return;
       }
       if (pollTimer) clearInterval(pollTimer);
@@ -117,10 +265,18 @@
       poll();
     };
 
-    document.getElementById("cancel").onclick = async () => {
-      if (!sessionId) return;
+    cancelBtn.onclick = async () => {
+      if (!sessionId || cancelBtn.disabled) return;
+      if (!confirm("确认终止当前任务？")) return;
       await api(`/api/sessions/${sessionId}/cancel`, { method: "POST" });
       poll();
+    };
+
+    // KB stub demo
+    document.getElementById("kbAsk").onclick = () => {
+      const q = document.getElementById("kbQuestion").value.trim() || "（空问题）";
+      document.getElementById("kbResult").textContent =
+        `问题：${q}\n\nStub 响应（hit=false）：当前未接入企业内部知识库\n\n说明：对接第 3 部分后，将调用 KB_BASE_URL 的问答接口并返回带引用答案。`;
     };
   </script>
 </body>

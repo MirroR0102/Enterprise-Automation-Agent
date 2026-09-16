@@ -9,9 +9,9 @@
 ## 架构
 
 ```text
-浏览器 (login / 工作台 / 开发日志)
+浏览器 (login / 左侧能力栏工作台 / 开发日志)
     → FastAPI (JWT)
-        → 会话运行时 + 取消标志
+        → 会话运行时 + 取消标志（终态后不可再标 cancelled）
         → LangGraph StateGraph + MemorySaver(thread_id=session_id)
             agent ⇄ tools → finalize
         → 工具：web_search / calculator / current_time / mysql_query /
@@ -19,6 +19,8 @@
                  enterprise_knowledge_search（默认 Stub）
         → SQLite mock 或 MySQL（users / sales / agent_logs）
 ```
+
+工作台为浅色双栏：左「运营周报 Agent / 知识库问答（第 3 部分占位）」；右为主区。状态芯片中文：执行中 / 已完成 / 已取消…
 
 ## 环境要求
 
@@ -98,7 +100,7 @@ copy .env.example .env
 | POST | `/api/sessions/{id}/messages` | `{content}` 后台启动 Agent |
 | GET | `/api/sessions/{id}/events` | 事件列表（前端时间线轮询） |
 | GET | `/api/sessions/{id}/stream` | SSE |
-| POST | `/api/sessions/{id}/cancel` | 合作式取消 |
+| POST | `/api/sessions/{id}/cancel` | 合作式取消（仅 running；已完成/已有 final 时保持原终态，`ok:false`） |
 | GET | `/api/logs?session_id=&limit=` | **仅 dev** |
 | GET | `/api/health` | 存活 |
 
@@ -158,21 +160,47 @@ copy .env.example .env
 
 ```text
 app/           FastAPI + LangGraph + 工具 + DB
-web/           登录 / 工作台 / 开发日志
+web/           登录 / 能力壳工作台（周报+知识库占位）/ 开发日志
 reports/       Agent 可写的 Markdown
 tests/         pytest
-scripts/       init_db / purge_logs / 验收说明
+scripts/       init_db / purge_logs / 验收说明 / build_presentation.py
 docs/superpowers/plans/  实现规划（与根目录同名稿一致）
+docs/presentation/       30 分钟汇报 PPTX + 演讲稿 PDF（本地，不 push）
 2026-09-15-enterprise-ops-agent.md  根目录规划稿
+2026-09-15-part4-30min-presentation-outline.md  汇报大纲规格
 ```
 
 产品 brief 的 `.docx` 仅本地参考，已在 `.gitignore`，不会上传。
+
+## 汇报材料（本地，不推送）
+
+| 文件 | 路径 |
+| --- | --- |
+| PPT | `docs/presentation/第4部分-企业业务流程自动化Agent-汇报.pptx`（约 22 页） |
+| 演讲稿 PDF | `docs/presentation/第4部分-企业业务流程自动化Agent-演讲稿.pdf` |
+| 大纲 | `2026-09-15-part4-30min-presentation-outline.md` |
+| 生成脚本 | `scripts/build_presentation.py` |
+
+重新生成：
+
+```powershell
+.\.venv\Scripts\python.exe scripts\build_presentation.py
+```
+
+**维护约定：** 项目仍在迭代。每当架构、验收口径、安全止损、演示账号/验收句、第 3 部分接口、联调问题结论等有重要改动，请同步更新上述 PPTX 与 PDF（或改脚本后重跑），并视需要改大纲。`.pptx`/`.pdf` 已 gitignore，**不要 push**。
 
 ## 联调问题记录（项目报告素材）
 
 > 记录真实验收中踩过的坑，便于写报告「问题与解决」。
 
-### 2026-09-15：验收句 SQL 列名错误导致整条任务终止
+### 2026-09-16：成功出周报后状态误显示 cancelled
+
+| 项 | 内容 |
+| --- | --- |
+| 现象 | 右侧已有完整周报，顶部状态仍为 `cancelled` |
+| 根因 | 任务已完成后仍可点取消；`cancel_session` 无条件把 status 写成 cancelled；与 final 事件并存 |
+| 修复 | 终态（completed/failed/timeout/max_rounds）或已有 `final` 事件时拒绝覆盖；前端中文状态芯片 + 终态禁用取消 |
+| 结论 | 取消只作用于真正进行中的任务；已有报告视为成功 |
 
 | 项 | 内容 |
 | --- | --- |

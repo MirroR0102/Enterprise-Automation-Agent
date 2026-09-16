@@ -11,10 +11,11 @@
 3. 浏览器打开 http://127.0.0.1:8000/login.html ，用 `ops` / `ops123` 登录
 4. 发送验收句
 5. 时间线应出现搜索 / mysql_query / calculator（写入 reports/*.md 可选）
-6. 最终面板渲染完整 Markdown 周报
-7. 点取消可终止进行中的任务
-8. 用 `dev` / `dev123` 打开 `/logs.html` 能看到工具入参与返回
-9. `pytest -q` 全绿（不依赖真实 DeepSeek/Tavily/MySQL）
+6. 最终面板渲染完整 Markdown 周报；顶部状态应为 **已完成**（不是 cancelled）
+7. 点取消可终止**进行中**的任务；成功结束后再点取消应仍保持已完成
+8. 左侧可切换「知识库问答」占位页（Stub 文案，不伪造检索）
+9. 用 `dev` / `dev123` 打开 `/logs.html` 能看到工具入参与返回
+10. `pytest -q` 全绿（不依赖真实 DeepSeek/Tavily/MySQL）
 
 无 Tavily 时，搜索工具会返回配置错误文案，Agent 应说明原因而不是编造新闻。
 无 DeepSeek 时，页面任务会失败；单测仍可全部通过。

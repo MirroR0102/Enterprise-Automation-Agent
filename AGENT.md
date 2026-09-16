@@ -32,6 +32,7 @@
 12. 用户说「提交」通常指本地 commit；「上传 / 推送」才 push。
 13. 完成本次用户要求后，同步更新 `AGENT.md` 与 `README.md`。
 14. 用户说停止就立刻停，不要继续加功能。
+15. **汇报材料同步**：对架构 / 验收口径 / 安全止损 / 演示账号与验收句 / 第 3 部分接口 / 联调问题结论等**重要改动**完成后，必须同步更新本地 `docs/presentation/` 下的 PPTX 与演讲稿 PDF（可重跑 `scripts/build_presentation.py`），并核对大纲 `2026-09-15-part4-30min-presentation-outline.md`。这两份成品**禁止 push**（已 gitignore）。
 
 ---
 
@@ -49,9 +50,10 @@
 | 会话 / 事件 / 取消 | `app/api/chat.py`、`app/runtime.py` |
 | 日志与 60 天清理 | `app/logging_service.py`、`scripts/purge_logs.py` |
 | MySQL / mock SQLite | `app/db/mysql.py`、`schema.sql`、`seed.sql` |
-| 前端 | `web/login.html`、`index.html`、`logs.html` |
+| 前端 | `web/login.html`、`index.html`（侧栏能力壳）、`logs.html`、`app.css` |
 | 配置常量 | `app/config.py`、`.env.example` |
 | 单测 | `tests/test_*.py` |
+| 30 分钟汇报 PPT/PDF（本地，不 push） | `docs/presentation/`、`scripts/build_presentation.py`、根目录 `2026-09-15-part4-30min-presentation-outline.md` |
 
 ---
 
@@ -62,7 +64,8 @@
 3. 改 API/鉴权/取消 → `pytest tests/test_auth.py tests/test_api_cancel.py`
 4. 改前端 → 启动 uvicorn，用浏览器走登录 → 发送 → 时间线 → 取消 → dev 日志
 5. 提交前同步 `AGENT.md` + `README.md`；全量 `pytest -q`
-6. 推 GitHub 仅当用户确认 VPN 已开
+6. **若本次是重要改动**：同步更新 `docs/presentation/` 的 PPTX/PDF（或重跑 `scripts/build_presentation.py`），再决定是否本地 commit（演示成品默认不进 git）
+7. 推 GitHub 仅当用户确认 VPN 已开；**勿 push** `docs/presentation/*.pptx|*.pdf`
 
 Windows / PowerShell：用 `D:\anaconda\python.exe -m venv .venv` 建环境；日常跑命令用 `.\.venv\Scripts\python.exe`。
 
@@ -83,6 +86,8 @@ Windows / PowerShell：用 `D:\anaconda\python.exe -m venv .venv` 建环境；�
 - 已推送 `main` → `origin`（`https://github.com/MirroR0102/Enterprise-Automation-Agent`）；直连失败时用本机代理 `127.0.0.1:7892`
 - SQL 工具：错误列名等执行失败改为返回可读错误（不抛异常），系统提示与工具说明写明 `sales(sale_date, amount, region)`，避免整条任务因一次写错列名而终止
 - 联调问题（`order_date` / 工具失败即停）已写入 `README.md`「联调问题记录」，供项目报告引用；勿删该节
+- 30 分钟汇报材料已生成到 `docs/presentation/`（PPTX + 演讲稿 PDF，gitignore，不 push）；重要改动后须同步更新（见硬约束第 15 条）
+- 2026-09-16：取消与终态互斥（完成后点取消仍保持 completed）；工作台浅色壳 + 左侧「运营周报 / 知识库占位」能力栏；状态中文芯片
 
 ---
 
@@ -90,7 +95,7 @@ Windows / PowerShell：用 `D:\anaconda\python.exe -m venv .venv` 建环境；�
 
 见 README「主要 API」。会话键：`configurable.thread_id = session_id`。
 
-取消：`POST /api/sessions/{id}/cancel` 设 `runtime` 取消标志，图节点每步检查；同时 `task.cancel()`。
+取消：`POST /api/sessions/{id}/cancel`。仅 `running` 时可取消；若已是 `completed`/`failed`/`timeout`/`max_rounds`，或事件中已有 `final`，**不得**改写成 `cancelled`（返回 `ok:false` 并保持原终态）。图节点仍检查取消标志；迟到的取消在已有报告时视为成功完成。
 
 ---
 

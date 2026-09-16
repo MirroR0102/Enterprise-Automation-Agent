@@ -3,25 +3,25 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>执行日志 · Ops Agent</title>
+  <title>开发日志 · 运营业务自动化 Agent</title>
   <link rel="stylesheet" href="/app.css" />
 </head>
 <body>
   <div class="shell">
     <div class="top">
-      <div class="brand">开发日志</div>
-      <div>
-        <a href="/">返回工作台</a>
-        <button class="ghost" id="logout">退出</button>
+      <div class="brand">开发日志 <span>· Dev</span></div>
+      <div class="row" style="margin:0">
+        <a href="/#ops">返回工作台</a>
+        <button class="ghost" type="button" id="logout">退出</button>
       </div>
     </div>
     <div class="card">
       <p class="hint" id="msg">仅 dev 角色可查看全部工具调用日志。保留 60 天，可用 scripts/purge_logs.py 清理。</p>
       <div class="row">
         <input id="sid" placeholder="按 session_id 筛选（可空）" />
-        <button class="primary" id="load">刷新</button>
+        <button class="primary" type="button" id="load">刷新</button>
       </div>
-      <div class="timeline" id="list" style="margin-top:1rem"></div>
+      <div class="timeline" id="list" style="margin-top:1rem;max-height:70vh"></div>
     </div>
   </div>
   <script src="/common.js"></script>
@@ -45,7 +45,12 @@
       for (const ev of body.items || []) {
         const div = document.createElement("div");
         div.className = "event " + (ev.type || "");
-        div.innerHTML = `<div class="meta">${ev.timestamp || ""} · ${ev.type || ev.event_type} · ${ev.session_id || ""}</div>`;
+        const meta = document.createElement("div");
+        meta.className = "meta";
+        meta.innerHTML = `${ev.timestamp || ""} · ${ev.type || ev.event_type || ""}`;
+        if (ev.session_id) meta.innerHTML += ` · <span class="pill">${ev.session_id.slice(0, 8)}…</span>`;
+        if (ev.tool) meta.innerHTML += ` · <span class="pill">${ev.tool}</span>`;
+        div.appendChild(meta);
         const pre = document.createElement("pre");
         pre.textContent = JSON.stringify(ev, null, 2);
         div.appendChild(pre);
