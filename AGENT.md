@@ -90,6 +90,7 @@ Windows / PowerShell：用 `D:\anaconda\python.exe -m venv .venv` 建环境；�
 - 2026-09-16：取消与终态互斥（完成后点取消仍保持 completed）；工作台浅色壳 + 左侧「运营周报 / 知识库占位」能力栏；状态中文芯片
 - 2026-09-16 交互改版：底部 composer、侧栏左下头像、过程全宽、final 后右侧分屏预览（可收起）、取消仅 running 可点
 - 2026-09-16：M1/U1–U6/DB1 — 同会话记忆、发送清空、昵称设置、入参默认展开、每用户分库 `eoa_u_{id}` + 过往周报；汇报材料 P0–P4 仍待做
+- 2026-09-16：侧栏身份「加载中」/设置点不开 — `marked` CDN 改 defer；整块用户区可点；本地缓存先渲染；`/login` 回传 `username`；MySQL `connect_timeout`
 
 ---
 

@@ -100,6 +100,9 @@ def _mysql_connect(database: str | None = ...):  # type: ignore[assignment]
         "charset": "utf8mb4",
         "cursorclass": pymysql.cursors.DictCursor,
         "autocommit": True,
+        "connect_timeout": 3,
+        "read_timeout": 8,
+        "write_timeout": 8,
     }
     if database is ...:
         kwargs["database"] = parts.database

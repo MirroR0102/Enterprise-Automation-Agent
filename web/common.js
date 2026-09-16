@@ -66,22 +66,28 @@ function requireLogin() {
   if (!getToken()) location.href = "/login.html";
 }
 
-async function ensureUserProfile() {
-  const res = await api("/api/auth/me");
-  if (!res.ok) {
-    return {
-      username: getUsername() || getRole() || "user",
-      role: getRole(),
-      nickname: getNickname(),
-    };
-  }
-  const body = await res.json();
-  setSession(getToken(), body.role || getRole(), body.username || getUsername());
+function localProfile() {
   return {
-    username: body.username || getUsername(),
-    role: body.role || getRole(),
-    nickname: getNickname() || body.username || "",
+    username: getUsername() || getRole() || "user",
+    role: getRole(),
+    nickname: getNickname() || getUsername() || getRole() || "user",
   };
+}
+
+async function ensureUserProfile() {
+  try {
+    const res = await api("/api/auth/me");
+    if (!res.ok) return localProfile();
+    const body = await res.json();
+    setSession(getToken(), body.role || getRole(), body.username || getUsername());
+    return {
+      username: body.username || getUsername() || "user",
+      role: body.role || getRole(),
+      nickname: getNickname() || body.username || getUsername() || "user",
+    };
+  } catch (_) {
+    return localProfile();
+  }
 }
 
 function roleLabel(role) {

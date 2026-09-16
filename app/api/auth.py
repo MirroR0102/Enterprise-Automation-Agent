@@ -24,7 +24,12 @@ def login(body: LoginBody) -> dict:
             detail="用户名或密码错误",
         )
     token = create_access_token(int(row["id"]), row["username"], row["role"])
-    return {"access_token": token, "token_type": TOKEN_TYPE, "role": row["role"]}
+    return {
+        "access_token": token,
+        "token_type": TOKEN_TYPE,
+        "role": row["role"],
+        "username": row["username"],
+    }
 
 
 @router.get("/me")

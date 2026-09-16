@@ -94,7 +94,7 @@ copy .env.example .env
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| POST | `/api/auth/login` | `{username,password}` → `{access_token,token_type,role}` |
+| POST | `/api/auth/login` | `{username,password}` → `{access_token,token_type,role,username}` |
 | GET | `/api/auth/me` | 当前用户 |
 | POST | `/api/sessions` | 创建会话 → `{session_id}` |
 | POST | `/api/sessions/{id}/messages` | `{content}` 后台启动 Agent |
@@ -219,6 +219,7 @@ docs/presentation/       30 分钟汇报 PPTX + 演讲稿 PDF（本地，不 pus
 
 ## 常见问题
 
+- **侧栏一直「加载中」、点不开设置**：曾因 head 里同步拉 `marked` CDN 卡住导致整页脚本不跑；现改为 `defer`，整块用户区可点，本地缓存先显示昵称/登录名。硬刷新（Ctrl+F5）后再试。
 - **Tavily 未配置**：工具返回明确错误，周报应写明未检索到公开新闻，而不是编造。
 - **DeepSeek 401/超时**：检查 `DEEPSEEK_API_KEY`；任务超时固定 `TASK_TIMEOUT_S=30`（规划要求，勿擅自放宽）。
 - **SQL 写错列名**：见上文「联调问题记录」；业务表是 `sales(sale_date, amount, region)`，不是 `order_date`。

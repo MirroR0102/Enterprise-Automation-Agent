@@ -9,6 +9,7 @@ def test_login_returns_token(client):
     body = response.json()
     assert body["token_type"] == "bearer"
     assert body["role"] == "ops"
+    assert body["username"] == "ops"
     assert body["access_token"]
 
 

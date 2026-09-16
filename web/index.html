@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>运营业务自动化 Agent</title>
   <link rel="stylesheet" href="/app.css" />
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
   <div class="app-frame">
@@ -19,13 +18,13 @@
       </div>
       <ul class="nav-list" id="navList"></ul>
       <div class="sidebar-foot-note">后续可接入第 1 / 2 / 5 部分</div>
-      <div class="user-card" id="userCard">
-        <button type="button" class="avatar" id="userAvatar" title="设置">O</button>
-        <div class="user-meta">
-          <strong id="userNick">加载中</strong>
-          <span id="userLogin">加载中</span>
-        </div>
-      </div>
+      <button type="button" class="user-card" id="userCard" title="打开设置">
+        <span class="avatar" id="userAvatar" aria-hidden="true">?</span>
+        <span class="user-meta">
+          <strong id="userNick">…</strong>
+          <span id="userLogin">…</span>
+        </span>
+      </button>
     </aside>
 
     <div class="main">
@@ -229,22 +228,37 @@
     switchCapability(capFromHash());
     window.addEventListener("hashchange", () => switchCapability(capFromHash()));
 
+    // 先用本地缓存立刻刷身份，避免一直停在占位文案
+    renderIdentity({
+      username: getUsername() || getRole() || "user",
+      role: getRole(),
+      nickname: getNickname() || getUsername() || getRole() || "user",
+    });
     (async () => {
-      const profile = await ensureUserProfile();
-      renderIdentity(profile);
-      if ((profile.role || getRole()) === "dev") document.getElementById("logsLink").hidden = false;
+      try {
+        const profile = await ensureUserProfile();
+        renderIdentity(profile);
+        if ((profile.role || getRole()) === "dev") document.getElementById("logsLink").hidden = false;
+      } catch (_) {
+        renderIdentity({
+          username: getUsername() || getRole() || "user",
+          role: getRole(),
+          nickname: getNickname() || getUsername() || "user",
+        });
+      }
     })();
 
-    // settings
+    // settings：整块用户区可点，不只头像
     const settingsModal = document.getElementById("settingsModal");
-    document.getElementById("userAvatar").onclick = () => {
-      document.getElementById("setNick").value = getNickname() || getUsername();
+    function openSettings() {
+      document.getElementById("setNick").value = getNickname() || getUsername() || "";
       document.getElementById("setReportDir").value = getReportDirPref();
       settingsModal.hidden = false;
-    };
+    }
+    document.getElementById("userCard").onclick = openSettings;
     document.getElementById("closeSettings").onclick = () => { settingsModal.hidden = true; };
     document.getElementById("saveSettings").onclick = () => {
-      const nick = document.getElementById("setNick").value.trim() || getUsername();
+      const nick = document.getElementById("setNick").value.trim() || getUsername() || "user";
       setNickname(nick);
       setReportDirPref(document.getElementById("setReportDir").value.trim() || "reports/");
       document.getElementById("userNick").textContent = nick;
@@ -429,5 +443,7 @@
     setStatus("idle");
     updateSessionMeta();
   </script>
+  <!-- 延后加载，避免 CDN 卡住时整页脚本不执行 -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" defer></script>
 </body>
 </html>

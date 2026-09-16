@@ -211,10 +211,18 @@ textarea {
   display: flex;
   align-items: center;
   gap: 0.55rem;
+  width: 100%;
+  text-align: left;
   padding: 0.75rem 0.5rem 0.35rem;
   margin-top: auto;
+  border: none;
   border-top: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
 }
+.user-card:hover { background: var(--panel-2); }
 .user-card .avatar {
   width: 36px;
   height: 36px;
@@ -227,7 +235,6 @@ textarea {
   font-size: 0.85rem;
   flex-shrink: 0;
   border: none;
-  cursor: pointer;
   padding: 0;
 }
 .user-card .user-meta {
