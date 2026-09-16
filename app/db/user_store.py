@@ -1,4 +1,4 @@
-"""Per-user storage for conversations and weekly reports (MySQL schema or SQLite file)."""
+"""按用户隔离的会话、消息、工具事件与周报存储（MySQL 独立 schema 或 SQLite 单文件）。"""
 
 from __future__ import annotations
 
@@ -17,10 +17,12 @@ from app.db.mysql import parse_mysql_dsn
 _lock = threading.RLock()
 _sqlite_pool: dict[int, sqlite3.Connection] = {}
 
+# 仅允许 eoa_u_<数字> 形式，防止 schema 名注入
 _SAFE = re.compile(r"^eoa_u_\d+$")
 
 
 def user_schema_name(user_id: int) -> str:
+    """MySQL 模式下每用户独立库名，格式 eoa_u_<user_id>。"""
     name = f"eoa_u_{int(user_id)}"
     if not _SAFE.match(name):
         raise ValueError("invalid user schema")
@@ -32,12 +34,14 @@ def _utc_now() -> str:
 
 
 def _sqlite_path(user_id: int) -> Path:
+    """mock 模式下每用户一个 SQLite 文件。"""
     path = ROOT_DIR / "data" / "users" / f"u_{int(user_id)}.db"
     path.parent.mkdir(parents=True, exist_ok=True)
     return path
 
 
 def _get_sqlite(user_id: int) -> sqlite3.Connection:
+    """按 user_id 缓存 SQLite 连接。"""
     with _lock:
         conn = _sqlite_pool.get(user_id)
         if conn is None:
@@ -97,6 +101,7 @@ CREATE TABLE IF NOT EXISTS weekly_reports (
 
 
 def ensure_user_store(user_id: int) -> None:
+    """确保该用户的存储 schema / SQLite 文件及表结构已就绪。"""
     settings = get_settings()
     if settings.use_mock_db:
         conn = _get_sqlite(user_id)
@@ -171,6 +176,7 @@ def ensure_user_store(user_id: int) -> None:
 
 @contextmanager
 def user_connection(user_id: int) -> Iterator[Any]:
+    """获取指定用户的数据库连接；mock 为 SQLite，生产为独立 MySQL schema。"""
     ensure_user_store(user_id)
     settings = get_settings()
     if settings.use_mock_db:
@@ -186,6 +192,7 @@ def user_connection(user_id: int) -> Iterator[Any]:
 
 
 def ensure_conversation(user_id: int, conversation_id: str, title: str = "") -> None:
+    """存在则更新 updated_at，不存在则插入新会话。"""
     now = _utc_now()
     with user_connection(user_id) as conn:
         if get_settings().use_mock_db:
@@ -218,6 +225,7 @@ def ensure_conversation(user_id: int, conversation_id: str, title: str = "") -> 
 
 
 def add_message(user_id: int, conversation_id: str, role: str, content: str) -> None:
+    """向会话追加一条消息。"""
     ensure_conversation(user_id, conversation_id)
     now = _utc_now()
     with user_connection(user_id) as conn:
@@ -235,6 +243,7 @@ def add_message(user_id: int, conversation_id: str, role: str, content: str) -> 
 
 
 def add_tool_event(user_id: int, conversation_id: str, event: dict[str, Any]) -> None:
+    """记录 Agent 工具调用事件（JSON 序列化后入库）。"""
     ensure_conversation(user_id, conversation_id)
     now = _utc_now()
     blob = json.dumps(event, ensure_ascii=False, default=str)
@@ -259,6 +268,7 @@ def save_weekly_report(
     title: str = "",
     file_relpath: str = "",
 ) -> int:
+    """保存周报 Markdown，返回新记录 ID。"""
     ensure_conversation(user_id, conversation_id, title=title or "运营周报")
     now = _utc_now()
     title = title or _title_from_markdown(markdown)
@@ -280,6 +290,7 @@ def save_weekly_report(
 
 
 def list_weekly_reports(user_id: int, limit: int = 50) -> list[dict[str, Any]]:
+    """列出用户周报摘要（不含 markdown 正文），按 ID 倒序。"""
     ensure_user_store(user_id)
     limit = max(1, min(int(limit), 200))
     with user_connection(user_id) as conn:
@@ -300,6 +311,7 @@ def list_weekly_reports(user_id: int, limit: int = 50) -> list[dict[str, Any]]:
 
 
 def get_weekly_report(user_id: int, report_id: int) -> dict[str, Any] | None:
+    """按 ID 获取完整周报记录。"""
     ensure_user_store(user_id)
     with user_connection(user_id) as conn:
         if get_settings().use_mock_db:
@@ -319,6 +331,7 @@ def get_weekly_report(user_id: int, report_id: int) -> dict[str, Any] | None:
 
 
 def _title_from_markdown(markdown: str) -> str:
+    """从 Markdown 首行标题提取周报标题，缺省为「运营周报」。"""
     for line in (markdown or "").splitlines():
         s = line.strip()
         if s.startswith("#"):

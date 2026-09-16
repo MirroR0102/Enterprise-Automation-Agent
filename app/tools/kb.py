@@ -1,3 +1,5 @@
+"""企业内部知识库客户端：未配置时返回 stub，已配置则走 HTTP QA 接口。"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -10,6 +12,8 @@ from app.config import get_settings
 
 @dataclass
 class Citation:
+    """知识库引用片段。"""
+
     doc_name: str
     page: int | str | None = None
     snippet: str = ""
@@ -20,6 +24,8 @@ class Citation:
 
 @dataclass
 class KnowledgeHit:
+    """知识库查询结果。"""
+
     answer: str
     citations: list[Citation] = field(default_factory=list)
     hit: bool = False
@@ -34,6 +40,8 @@ class KnowledgeHit:
 
 
 class KnowledgeBaseClient(Protocol):
+    """知识库客户端协议。"""
+
     def query(
         self,
         question: str,
@@ -43,6 +51,8 @@ class KnowledgeBaseClient(Protocol):
 
 
 class StubKnowledgeBaseClient:
+    """未接入知识库时的占位实现，固定返回未接入提示。"""
+
     def query(
         self,
         question: str,
@@ -57,6 +67,8 @@ class StubKnowledgeBaseClient:
 
 
 class HttpKnowledgeBaseClient:
+    """通过 HTTP 调用外部知识库 QA 服务。"""
+
     def query(
         self,
         question: str,
@@ -102,10 +114,12 @@ class HttpKnowledgeBaseClient:
 
 
 def get_kb_client() -> KnowledgeBaseClient:
+    """按 KB_ENABLED 选择 HTTP 客户端或 stub。"""
     if get_settings().kb_enabled:
         return HttpKnowledgeBaseClient()
     return StubKnowledgeBaseClient()
 
 
 def query_enterprise_kb(question: str, top_k: int = 5, session_id: str | None = None) -> KnowledgeHit:
+    """查询企业知识库的统一入口。"""
     return get_kb_client().query(question=question, top_k=top_k, session_id=session_id)

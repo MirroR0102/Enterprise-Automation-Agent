@@ -1,3 +1,5 @@
+"""业务主库连接：支持 MySQL 与本地 SQLite mock，并提供 schema 初始化与用户查询。"""
+
 from __future__ import annotations
 
 import os
@@ -17,6 +19,8 @@ _sqlite_conn: sqlite3.Connection | None = None
 
 @dataclass
 class MysqlParts:
+    """MySQL 连接串解析结果。"""
+
     user: str
     password: str
     host: str
@@ -25,6 +29,7 @@ class MysqlParts:
 
 
 def parse_mysql_dsn(dsn: str) -> MysqlParts:
+    """解析 MYSQL_DSN，兼容 mysql:// 与 mysql+pymysql:// 两种写法。"""
     raw = dsn
     if dsn.startswith("mysql+pymysql://"):
         raw = "mysql://" + dsn[len("mysql+pymysql://") :]
@@ -44,6 +49,7 @@ def parse_mysql_dsn(dsn: str) -> MysqlParts:
 
 
 def sqlite_path() -> Path:
+    """mock 模式下的 SQLite 文件路径；可通过 MOCK_DB_PATH 覆盖。"""
     override = os.environ.get("MOCK_DB_PATH", "").strip()
     if override:
         path = Path(override)
@@ -54,6 +60,7 @@ def sqlite_path() -> Path:
 
 
 def get_sqlite() -> sqlite3.Connection:
+    """获取进程内单例 SQLite 连接（mock 模式）。"""
     global _sqlite_conn
     with _lock:
         if _sqlite_conn is None:
@@ -65,6 +72,7 @@ def get_sqlite() -> sqlite3.Connection:
 
 
 def reset_sqlite_for_tests() -> None:
+    """测试用：重置 mock 库，删除文件或清空核心表。"""
     global _sqlite_conn
     with _lock:
         if _sqlite_conn is not None:
@@ -75,7 +83,7 @@ def reset_sqlite_for_tests() -> None:
             try:
                 path.unlink()
             except PermissionError:
-                # Another process may hold the file; fall back to truncating tables.
+                # 文件被其他进程占用时，退化为删表而非删文件
                 conn = sqlite3.connect(str(path), check_same_thread=False)
                 try:
                     conn.executescript(
@@ -89,6 +97,7 @@ def reset_sqlite_for_tests() -> None:
 
 
 def _mysql_connect(database: str | None = ...):  # type: ignore[assignment]
+    """建立 MySQL 连接；database=None 时不指定库（用于 CREATE DATABASE）。"""
     import pymysql
 
     parts = parse_mysql_dsn(get_settings().mysql_dsn)
@@ -113,6 +122,7 @@ def _mysql_connect(database: str | None = ...):  # type: ignore[assignment]
 
 @contextmanager
 def get_connection() -> Iterator[Any]:
+    """按配置返回 mock SQLite 或 MySQL 连接；mock 模式下自动 commit。"""
     settings = get_settings()
     if settings.use_mock_db:
         conn = get_sqlite()
@@ -127,6 +137,7 @@ def get_connection() -> Iterator[Any]:
 
 
 def init_schema_and_seed() -> None:
+    """初始化 users / sales / agent_logs 表并写入演示账号与样例销售数据。"""
     from app.auth.security import hash_password
 
     settings = get_settings()
@@ -176,6 +187,7 @@ def _init_sqlite(hash_password) -> None:
 
 def _init_mysql(hash_password) -> None:
     parts = parse_mysql_dsn(get_settings().mysql_dsn)
+    # 先连无库实例建库，再连目标库建表
     root = _mysql_connect(database=None)
     try:
         with root.cursor() as cur:
@@ -238,6 +250,7 @@ def _init_mysql(hash_password) -> None:
 
 
 def _sales_rows() -> list[tuple]:
+    """演示用销售样例数据。"""
     return [
         ("2026-09-01", 20000.00, "华东"),
         ("2026-09-05", 35000.00, "华北"),
@@ -278,6 +291,7 @@ def _seed_users_mysql(cur, hash_password) -> None:
 
 
 def fetch_user_by_username(username: str) -> dict | None:
+    """按用户名查询用户（含 password_hash、role）。"""
     with get_connection() as conn:
         if get_settings().use_mock_db:
             row = conn.execute(
@@ -294,6 +308,7 @@ def fetch_user_by_username(username: str) -> dict | None:
 
 
 def fetch_user_by_id(user_id: int) -> dict | None:
+    """按用户 ID 查询用户。"""
     with get_connection() as conn:
         if get_settings().use_mock_db:
             row = conn.execute(
@@ -310,6 +325,7 @@ def fetch_user_by_id(user_id: int) -> dict | None:
 
 
 def execute_readonly_query(sql: str) -> list[dict[str, Any]]:
+    """执行只读 SQL 并返回字典行列表；调用方须先做 is_safe_select_sql 校验。"""
     with get_connection() as conn:
         if get_settings().use_mock_db:
             cur = conn.execute(sql)

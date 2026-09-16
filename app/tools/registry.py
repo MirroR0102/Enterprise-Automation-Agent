@@ -1,3 +1,5 @@
+"""Agent 工具注册表：汇总 LangChain 工具并暴露给运行时。"""
+
 from __future__ import annotations
 
 import json
@@ -17,11 +19,13 @@ def enterprise_knowledge_search(question: str, top_k: int = 5) -> str:
     """查询企业内部知识库（规范、制度）。默认未接入时返回 stub，禁止把 stub 当真实资料写进周报。"""
     hit = query_enterprise_kb(question=question, top_k=top_k)
     payload = hit.as_dict()
+    # 显式标记 stub，便于 Agent 区分未接入与真实命中
     payload["stub"] = not hit.hit and payload.get("answer") == "当前未接入企业内部知识库"
     return json.dumps(payload, ensure_ascii=False)
 
 
 def get_all_tools() -> list:
+    """返回当前 Agent 可用的全部 LangChain 工具列表。"""
     return [
         web_search,
         calculator,

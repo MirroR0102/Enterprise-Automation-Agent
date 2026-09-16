@@ -1,3 +1,5 @@
+"""应用配置：从 .env 加载 LLM、数据库、JWT 与运行时限制。"""
+
 from functools import lru_cache
 from pathlib import Path
 
@@ -7,6 +9,8 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 
 
 class Settings(BaseSettings):
+    """环境变量映射；未设置项使用下方默认值。"""
+
     model_config = SettingsConfigDict(
         env_file=str(ROOT_DIR / ".env"),
         env_file_encoding="utf-8",
@@ -54,10 +58,12 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
+    """单例 Settings，进程内缓存。"""
     return Settings()
 
 
 def reports_path() -> Path:
+    """解析并确保 reports 目录存在（相对 ROOT_DIR）。"""
     path = Path(get_settings().reports_dir)
     if not path.is_absolute():
         path = ROOT_DIR / path

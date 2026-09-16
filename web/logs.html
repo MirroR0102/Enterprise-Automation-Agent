@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="/app.css" />
 </head>
 <body>
+  <!-- 开发日志页：无侧栏的简易 shell -->
   <div class="shell">
     <div class="top">
       <div class="brand">开发日志 <span>· Dev</span></div>
@@ -15,6 +16,7 @@
         <button class="ghost" type="button" id="logout">退出</button>
       </div>
     </div>
+    <!-- 筛选与日志列表 -->
     <div class="card">
       <p class="hint" id="msg">仅 dev 角色可查看全部工具调用日志。保留 60 天，可用 scripts/purge_logs.py 清理。</p>
       <div class="row">
@@ -26,11 +28,14 @@
   </div>
   <script src="/common.js"></script>
   <script>
+    // 登录校验与退出
     requireLogin();
     document.getElementById("logout").onclick = () => { clearSession(); location.href = "/login.html"; };
+    // 非 dev 角色仅提示无权，不拉取数据
     if (getRole() !== "dev") {
       document.getElementById("msg").textContent = "当前账号无权查看开发日志（需要 dev）。";
     }
+    // 拉取 /api/logs，可选 session_id 筛选，渲染 JSON 事件
     async function load() {
       const sid = document.getElementById("sid").value.trim();
       const qs = sid ? `?session_id=${encodeURIComponent(sid)}` : "";

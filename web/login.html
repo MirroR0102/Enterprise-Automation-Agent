@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="/app.css" />
 </head>
 <body>
+  <!-- 登录页：居中卡片表单 -->
   <div class="login-wrap">
     <form class="login-card" id="form">
       <h1>运营业务自动化 Agent</h1>
@@ -22,7 +23,9 @@
   </div>
   <script src="/common.js"></script>
   <script>
+    // 已登录则直接进入工作台
     if (getToken()) location.href = "/#ops";
+    // 提交表单：调用 /api/auth/login，成功后写入会话并跳转
     document.getElementById("form").addEventListener("submit", async (event) => {
       event.preventDefault();
       const data = Object.fromEntries(new FormData(event.target));

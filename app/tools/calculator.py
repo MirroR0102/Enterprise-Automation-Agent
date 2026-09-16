@@ -1,3 +1,5 @@
+"""安全算术计算器：仅解析 AST 数字运算，禁止任意代码执行。"""
+
 from __future__ import annotations
 
 import ast
@@ -21,6 +23,7 @@ _UNARY_OPS = {
 
 
 def _eval_node(node: ast.AST) -> float:
+    """递归求值 AST 节点，仅允许常量与二元/一元运算。"""
     if isinstance(node, ast.Expression):
         return _eval_node(node.body)
     if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
@@ -35,6 +38,7 @@ def _eval_node(node: ast.AST) -> float:
 
 
 def safe_eval_math(expr: str) -> float:
+    """解析并计算纯算术表达式。"""
     if not expr or not str(expr).strip():
         raise ValueError("表达式不能为空")
     tree = ast.parse(str(expr).strip(), mode="eval")

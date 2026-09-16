@@ -1,3 +1,5 @@
+"""知识库工具：Stub 不编造内容；HTTP 客户端解析 citations。"""
+
 import httpx
 
 from app.config import get_settings
@@ -5,6 +7,7 @@ from app.tools.kb import HttpKnowledgeBaseClient, StubKnowledgeBaseClient, query
 
 
 def test_stub_does_not_invent_business_content():
+    """Stub 应 hit=false 且固定「未接入」文案，无 citations。"""
     hit = StubKnowledgeBaseClient().query("公司差旅标准是什么")
     assert hit.hit is False
     assert hit.answer == "当前未接入企业内部知识库"
@@ -12,6 +15,7 @@ def test_stub_does_not_invent_business_content():
 
 
 def test_default_query_uses_stub():
+    """KB_ENABLED=false 时 query_enterprise_kb 走 Stub。"""
     get_settings.cache_clear()
     hit = query_enterprise_kb("内部制度")
     assert hit.hit is False
@@ -19,6 +23,7 @@ def test_default_query_uses_stub():
 
 
 def test_http_client_parses_citations(monkeypatch):
+    """KB_ENABLED=true 时 HTTP 客户端应解析 answer/hit/citations。"""
     monkeypatch.setenv("KB_ENABLED", "true")
     monkeypatch.setenv("KB_BASE_URL", "http://kb.example")
     get_settings.cache_clear()

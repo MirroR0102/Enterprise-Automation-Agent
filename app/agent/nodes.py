@@ -1,3 +1,5 @@
+"""LangGraph 节点实现：LLM 推理、工具调用、终稿汇总与事件持久化。"""
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -12,6 +14,7 @@ from app.runtime import is_cancelled
 
 
 def utc_now() -> str:
+    """返回 UTC ISO 时间戳，供事件记录使用。"""
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
@@ -23,6 +26,7 @@ def make_event(
     input: str | None = None,
     output: str | None = None,
 ) -> dict[str, Any]:
+    """构造标准 SSE/日志事件字典。"""
     payload: dict[str, Any] = {
         "type": event_type,
         "timestamp": utc_now(),
@@ -42,6 +46,7 @@ def _append(events: list[dict[str, Any]] | None, item: dict[str, Any]) -> list[d
 
 
 def _cancelled(state: dict) -> dict:
+    """用户取消时写入 cancelled 状态与对应事件。"""
     event = make_event("cancelled", "任务已被人工终止")
     return {
         "status": "cancelled",
@@ -50,6 +55,7 @@ def _cancelled(state: dict) -> dict:
 
 
 def _persist(state: dict, event: dict) -> None:
+    """将事件写入 DB 日志，并同步更新内存 SessionRecord 状态。"""
     from app.logging_service import log_event
     from app.runtime import get_session
 
@@ -69,6 +75,7 @@ def _persist(state: dict, event: dict) -> None:
 
 
 def get_llm(llm=None):
+    """按配置选择 DeepSeek / OpenAI / 通义千问兼容接口；可注入 mock LLM。"""
     if llm is not None:
         return llm
     from langchain_openai import ChatOpenAI
@@ -98,7 +105,10 @@ def get_llm(llm=None):
 
 
 def build_agent_node(llm=None, tools=None):
+    """返回 agent 节点：绑定工具调用 LLM，输出 thought 事件。"""
+
     def agent_node(state: dict) -> dict:
+        # 各节点入口统一检查取消标志
         if is_cancelled(state.get("session_id") or ""):
             result = _cancelled(state)
             _persist(state, result["events"][-1])
@@ -120,6 +130,7 @@ def build_agent_node(llm=None, tools=None):
 
 
 def build_tools_node(tools):
+    """返回 tools 节点：记录 tool_call/result，限制轮次，失败时重试一次。"""
     try:
         inner = ToolNode(tools, handle_tool_errors=False)
     except TypeError:
@@ -133,6 +144,7 @@ def build_tools_node(tools):
         settings = get_settings()
         tool_round = int(state.get("tool_round") or 0) + 1
         events = list(state.get("events") or [])
+        # 超过配置上限则终止，防止无限工具循环
         if tool_round > settings.max_tool_rounds:
             event = make_event(
                 "max_rounds",
@@ -161,6 +173,7 @@ def build_tools_node(tools):
         def _invoke():
             return inner.invoke(state)
 
+        # 工具失败时立即重试一次，连续两次失败则标记 failed
         try:
             result = _invoke()
         except Exception as first:
@@ -200,6 +213,7 @@ def build_tools_node(tools):
 
 
 def finalize_node(state: dict) -> dict:
+    """无更多 tool_calls 时提取最终 AI 回复，写入 final 事件并标记 completed。"""
     if is_cancelled(state.get("session_id") or ""):
         result = _cancelled(state)
         _persist(state, result["events"][-1])

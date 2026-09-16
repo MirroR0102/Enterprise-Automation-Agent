@@ -1,3 +1,4 @@
+/* —— 设计令牌 —— 颜色、圆角、阴影、字体 */
 :root {
   --bg: #f4f5f7;
   --panel: #ffffff;
@@ -21,6 +22,7 @@
   --sans: ui-sans-serif, system-ui, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
 }
 
+/* —— 基础重置 —— 全局盒模型、排版、表单控件 */
 * { box-sizing: border-box; }
 html, body {
   margin: 0;
@@ -81,7 +83,7 @@ textarea {
 .hint { color: var(--muted); font-size: 0.9rem; }
 .error { color: var(--bad); min-height: 1.2em; }
 
-/* —— Login —— */
+/* —— 登录页 —— 居中卡片 */
 .login-wrap {
   min-height: 100vh;
   display: grid;
@@ -116,7 +118,7 @@ textarea {
   margin: 0.75rem 0 0.35rem;
 }
 
-/* —— App shell —— */
+/* —— 应用外壳 —— 侧栏 + 主内容栅格 */
 .app-frame {
   display: grid;
   grid-template-columns: var(--sidebar-w) 1fr;
@@ -127,6 +129,7 @@ textarea {
   .sidebar { border-right: none; border-bottom: 1px solid var(--line); }
 }
 
+/* —— 侧栏 —— Logo、导航、底部用户卡片 */
 .sidebar {
   background: var(--panel);
   border-right: 1px solid var(--line);
@@ -261,6 +264,7 @@ textarea {
   font-size: 0.75rem;
   margin-top: 0.15rem;
 }
+/* —— 时间线 I/O 块 —— 工具入参/返回的折叠展示 */
 .io-block {
   margin-top: 0.45rem;
 }
@@ -284,6 +288,7 @@ textarea {
   overflow: auto;
 }
 
+/* —— 设置弹窗 —— 遮罩与表单 */
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -305,6 +310,7 @@ textarea {
   color: var(--muted);
 }
 
+/* —— 过往周报抽屉 —— 右侧滑出列表 */
 .drawer {
   position: fixed;
   inset: 0;
@@ -337,6 +343,7 @@ textarea {
 }
 .report-item:hover { border-color: #c4b5fd; }
 
+/* —— 主内容区 —— 顶栏、面板、工作区 */
 .main {
   display: flex;
   flex-direction: column;
@@ -375,6 +382,7 @@ textarea {
   color: var(--muted);
 }
 
+/* —— 工作区分栏 —— 执行过程与周报预览并排 */
 .panel {
   display: flex;
   flex-direction: column;
@@ -435,6 +443,7 @@ textarea {
 }
 .preview-head .panel-title { margin: 0; }
 
+/* —— 通用卡片 —— 白底圆角容器 */
 .card {
   background: var(--panel);
   border: 1px solid var(--line);
@@ -442,6 +451,7 @@ textarea {
   box-shadow: var(--shadow);
   padding: 1.1rem;
 }
+/* —— 底部输入区 —— 任务输入与发送/取消 */
 .composer {
   flex-shrink: 0;
   display: flex;
@@ -481,6 +491,7 @@ textarea {
   margin-top: 0.75rem;
 }
 
+/* —— 状态芯片 —— 就绪/执行中/完成/失败等 */
 .status-chip {
   display: inline-flex;
   align-items: center;
@@ -515,6 +526,7 @@ textarea {
   50% { opacity: 0.35; }
 }
 
+/* —— 标签 pill —— 工具名、会话 id 等 */
 .pill {
   display: inline-block;
   padding: 0.1rem 0.45rem;
@@ -526,6 +538,7 @@ textarea {
   font-weight: 600;
 }
 
+/* —— 执行时间线 —— 事件列表与类型色条 */
 .timeline {
   display: flex;
   flex-direction: column;
@@ -584,6 +597,7 @@ textarea {
   border: 1px solid var(--line);
 }
 
+/* —— Markdown 预览 —— 周报渲染样式 */
 .md-body {
   line-height: 1.65;
   flex: 1;
@@ -643,6 +657,7 @@ textarea {
   }
 }
 
+/* —— 知识库占位页 —— 第 3 部分预留 UI */
 .kb-hero h3 { margin-top: 0; }
 .kb-hero ul {
   margin: 0.5rem 0 1rem;
@@ -664,7 +679,7 @@ textarea {
   white-space: pre-wrap;
 }
 
-/* logs page without sidebar still uses cards */
+/* —— 开发日志页 —— 无侧栏的简易 shell */
 .shell {
   max-width: 1100px;
   margin: 0 auto;

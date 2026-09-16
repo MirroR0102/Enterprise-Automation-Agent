@@ -1,3 +1,5 @@
+"""LangGraph 编排限制：最大工具轮次与工具失败重试后停止。"""
+
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.tools import tool
 
@@ -44,6 +46,7 @@ def boom(x: str) -> str:
 
 
 def test_max_rounds_stops(monkeypatch):
+    """MAX_TOOL_ROUNDS=0 时图应以 max_rounds 状态结束。"""
     monkeypatch.setenv("MAX_TOOL_ROUNDS", "0")
     get_settings.cache_clear()
     graph = build_graph(llm=LoopLLM(), tools=[echo_tool])
@@ -63,6 +66,7 @@ def test_max_rounds_stops(monkeypatch):
 
 
 def test_tool_failure_retries_once_then_stops():
+    """工具连续失败后 status=failed 且 events 含 error。"""
     graph = build_graph(llm=FailLLM(), tools=[boom])
     result = graph.invoke(
         {

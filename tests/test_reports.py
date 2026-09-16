@@ -1,8 +1,11 @@
+"""周报 API：保存、列表、详情及用户隔离。"""
+
 from app.db import user_store
 from tests.conftest import auth_header, login
 
 
 def test_save_and_list_weekly_reports(client):
+    """保存周报后可通过列表与详情 API 读回 Markdown。"""
     token = login(client, "ops", "ops123")
     headers = auth_header(token)
     # ensure user via me
@@ -21,6 +24,7 @@ def test_save_and_list_weekly_reports(client):
 
 
 def test_reports_isolated_per_user(client):
+    """ops 用户的周报不应出现在 dev 用户的列表中。"""
     ops = auth_header(login(client, "ops", "ops123"))
     dev = auth_header(login(client, "dev", "dev123"))
     ops_id = client.get("/api/auth/me", headers=ops).json()["id"]

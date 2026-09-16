@@ -1,3 +1,5 @@
+"""Markdown 报告读写工具：路径限制在 reports/ 目录内。"""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -8,6 +10,7 @@ from app.config import reports_path
 
 
 def _safe_report_path(filename: str) -> Path:
+    """校验并解析报告路径，禁止绝对路径、穿越与 non-md 扩展名。"""
     name = (filename or "").strip()
     if not name:
         raise ValueError("文件名不能为空")
@@ -18,6 +21,7 @@ def _safe_report_path(filename: str) -> Path:
         raise ValueError("禁止路径穿越")
     root = reports_path().resolve()
     target = (root / name).resolve()
+    # resolve 后须仍在 reports 根目录下
     try:
         target.relative_to(root)
     except ValueError as exc:
@@ -28,6 +32,7 @@ def _safe_report_path(filename: str) -> Path:
 
 
 def write_report(filename: str, content: str) -> str:
+    """写入 Markdown 报告文件。"""
     path = _safe_report_path(filename)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
@@ -35,6 +40,7 @@ def write_report(filename: str, content: str) -> str:
 
 
 def read_report(filename: str) -> str:
+    """读取 Markdown 报告内容。"""
     path = _safe_report_path(filename)
     if not path.exists():
         return f"文件不存在: {path.name}"

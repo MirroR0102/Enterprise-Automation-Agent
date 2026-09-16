@@ -1,3 +1,5 @@
+"""业务库只读 SQL 查询工具：白名单校验后执行 SELECT。"""
+
 from __future__ import annotations
 
 import json
@@ -5,6 +7,7 @@ import re
 
 from langchain_core.tools import tool
 
+# 拒绝写操作与 DDL 关键字，防止 Agent 误执行危险语句
 _FORBIDDEN = re.compile(
     r"\b(drop|alter|delete|truncate|insert|update|create|grant|revoke)\b",
     re.IGNORECASE,
@@ -12,11 +15,13 @@ _FORBIDDEN = re.compile(
 
 
 def is_safe_select_sql(sql: str) -> bool:
+    """校验是否为单条只读 SELECT（禁止多语句与写操作关键字）。"""
     if sql is None:
         return False
     stripped = str(sql).strip()
     if not stripped:
         return False
+    # 仅允许一条语句：末尾分号后不能再有内容
     if ";" in stripped.rstrip(";"):
         return False
     core = stripped.rstrip(";").strip()
@@ -28,6 +33,7 @@ def is_safe_select_sql(sql: str) -> bool:
 
 
 def run_mysql_query(sql: str) -> str:
+    """执行安全 SELECT 并返回 JSON 字符串；失败时返回可读错误供 Agent 修正。"""
     if not is_safe_select_sql(sql):
         return "拒绝执行：仅允许单条只读 SELECT，且不得包含写操作或高危关键字。"
     from app.db.mysql import execute_readonly_query

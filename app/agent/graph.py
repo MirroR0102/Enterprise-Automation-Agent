@@ -1,3 +1,5 @@
+"""LangGraph 智能体图：定义 agent → tools → finalize 的状态流转与条件路由。"""
+
 from __future__ import annotations
 
 from langgraph.checkpoint.memory import MemorySaver
@@ -12,6 +14,7 @@ _CHECKPOINTER = MemorySaver()
 
 
 def _route_after_agent(state: AgentState) -> str:
+    """agent 节点执行后：异常终态直接结束，有 tool_calls 则进 tools，否则 finalize。"""
     status = state.get("status")
     if status in {"cancelled", "failed", "timeout", "max_rounds"}:
         return "end"
@@ -26,6 +29,7 @@ def _route_after_agent(state: AgentState) -> str:
 
 
 def _route_after_tools(state: AgentState) -> str:
+    """tools 节点执行后：异常终态结束，否则回到 agent 继续推理。"""
     status = state.get("status")
     if status in {"cancelled", "failed", "timeout", "max_rounds"}:
         return "end"
@@ -33,6 +37,7 @@ def _route_after_tools(state: AgentState) -> str:
 
 
 def build_graph(llm=None, tools=None, checkpointer=None):
+    """构建并编译 LangGraph 工作流；可注入 LLM、工具集与 checkpoint 存储。"""
     tools = tools if tools is not None else get_all_tools()
     builder = StateGraph(AgentState)
     builder.add_node("agent", build_agent_node(llm=llm, tools=tools))
@@ -54,6 +59,7 @@ def build_graph(llm=None, tools=None, checkpointer=None):
 
 
 def get_compiled_graph():
+    """返回进程内单例编译图，首次调用时懒加载。"""
     global _GRAPH
     if _GRAPH is None:
         _GRAPH = build_graph(checkpointer=_CHECKPOINTER)
@@ -61,5 +67,6 @@ def get_compiled_graph():
 
 
 def reset_graph_for_tests() -> None:
+    """测试用：清空单例，强制下次重新 build。"""
     global _GRAPH
     _GRAPH = None

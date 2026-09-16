@@ -161,11 +161,11 @@ copy .env.example .env
 ## 目录
 
 ```text
-app/           FastAPI + LangGraph + 工具 + DB
-web/           登录 / 能力壳工作台（周报+知识库占位）/ 开发日志
+app/           FastAPI + LangGraph + 工具 + DB（模块/函数含中文 docstring）
+web/           登录 / 能力壳工作台（周报+知识库占位）/ 开发日志（含中文分区注释）
 reports/       Agent 可写的 Markdown
-tests/         pytest
-scripts/       init_db / purge_logs / 验收说明 / build_presentation.py
+tests/         pytest（各模块含中文 docstring 与用例说明）
+scripts/       init_db / purge_logs / 验收说明 / build_presentation.py（脚本含中文说明）
 docs/superpowers/plans/  实现规划（与根目录同名稿一致）
 docs/presentation/       30 分钟汇报 PPTX + 演讲稿 PDF（本地，不 push）
 2026-09-15-enterprise-ops-agent.md  根目录规划稿

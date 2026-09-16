@@ -1,3 +1,5 @@
+"""Agent 事件日志：写入 MySQL/SQLite，DB 不可用时降级到内存。"""
+
 from __future__ import annotations
 
 import json
@@ -16,6 +18,7 @@ def log_event(
     payload: dict[str, Any],
     user_id: int | None = None,
 ) -> None:
+    """持久化单条事件；失败时追加到进程内 _memory_logs。"""
     created_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
     body = dict(payload)
     body.setdefault("type", event_type)
@@ -48,6 +51,7 @@ def log_event(
 
 
 def _row_to_event(row: dict[str, Any]) -> dict[str, Any]:
+    """将 DB 行转为前端/SSE 兼容的事件 dict。"""
     content = row.get("content_json")
     if isinstance(content, str):
         try:
@@ -63,6 +67,7 @@ def _row_to_event(row: dict[str, Any]) -> dict[str, Any]:
 
 
 def list_events(session_id: str) -> list[dict[str, Any]]:
+    """按 session_id 升序返回全部事件。"""
     settings = get_settings()
     try:
         with get_connection() as conn:
@@ -85,6 +90,7 @@ def list_events(session_id: str) -> list[dict[str, Any]]:
 
 
 def list_recent(limit: int = 100, session_id: str | None = None) -> list[dict[str, Any]]:
+    """查询最近 N 条日志，供 dev 运维接口使用。"""
     settings = get_settings()
     limit = max(1, min(int(limit), 500))
     try:
@@ -125,6 +131,7 @@ def list_recent(limit: int = 100, session_id: str | None = None) -> list[dict[st
 
 
 def purge_old_logs(days: int | None = None) -> int:
+    """按保留天数清理过期日志，返回删除行数。"""
     settings = get_settings()
     days = settings.log_retention_days if days is None else days
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)

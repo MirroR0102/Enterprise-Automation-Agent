@@ -1,3 +1,5 @@
+"""认证 API：登录签发 JWT、查询当前用户信息。"""
+
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 
@@ -11,12 +13,15 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
 class LoginBody(BaseModel):
+    """登录请求体。"""
+
     username: str = Field(min_length=1)
     password: str = Field(min_length=1)
 
 
 @router.post("/login")
 def login(body: LoginBody) -> dict:
+    """校验用户名密码，成功返回 access_token 与角色。"""
     row = fetch_user_by_username(body.username)
     if row is None or not verify_password(body.password, row["password_hash"]):
         raise HTTPException(
@@ -34,4 +39,5 @@ def login(body: LoginBody) -> dict:
 
 @router.get("/me")
 def me(user: User = Depends(get_current_user)) -> dict:
+    """返回当前 JWT 对应用户的基本信息。"""
     return {"id": user.id, "username": user.username, "role": user.role}

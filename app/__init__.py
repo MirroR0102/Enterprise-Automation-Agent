@@ -1,1 +1,1 @@
-"""Enterprise operations automation agent."""
+"""企业业务流程自动化 Agent 应用包。"""

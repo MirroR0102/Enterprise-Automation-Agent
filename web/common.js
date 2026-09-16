@@ -1,9 +1,11 @@
+/* localStorage 键名：登录态与用户偏好 */
 const TOKEN_KEY = "eoa_token";
 const ROLE_KEY = "eoa_role";
 const USER_KEY = "eoa_username";
 const NICK_KEY = "eoa_nickname";
 const REPORT_DIR_KEY = "eoa_report_dir";
 
+/* —— 会话读写 —— 从 localStorage 取 token / 角色 / 用户名 / 昵称 / 周报目录偏好 */
 function getToken() {
   return localStorage.getItem(TOKEN_KEY) || "";
 }
@@ -50,6 +52,7 @@ function clearSession() {
   // keep nickname/report prefs across logout
 }
 
+/* —— API 封装 —— 带 Bearer 的 fetch；401 时清会话并跳转登录页 */
 async function api(path, options = {}) {
   const headers = Object.assign({ "Content-Type": "application/json" }, options.headers || {});
   const token = getToken();
@@ -66,6 +69,7 @@ function requireLogin() {
   if (!getToken()) location.href = "/login.html";
 }
 
+/* —— 用户资料 —— 本地缓存与 /api/auth/me 同步；角色中文标签 */
 function localProfile() {
   return {
     username: getUsername() || getRole() || "user",

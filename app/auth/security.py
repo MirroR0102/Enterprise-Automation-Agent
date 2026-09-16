@@ -1,3 +1,5 @@
+"""密码哈希与 JWT 签发/校验。"""
+
 from datetime import datetime, timedelta, timezone
 
 import jwt
@@ -9,6 +11,7 @@ TOKEN_TYPE = "bearer"
 
 
 def hash_password(password: str, salt: str | None = None) -> str:
+    """PBKDF2-SHA256 哈希，格式 pbkdf2$<salt>$<hex>。"""
     import hashlib
     import secrets
 
@@ -23,6 +26,7 @@ def hash_password(password: str, salt: str | None = None) -> str:
 
 
 def verify_password(password: str, stored: str) -> bool:
+    """常量时间比较哈希，防止时序侧信道。"""
     import hashlib
     import hmac
 
@@ -42,6 +46,7 @@ def verify_password(password: str, stored: str) -> bool:
 
 
 def create_access_token(user_id: int, username: str, role: str) -> str:
+    """签发带 sub/username/role 与 exp 的 HS256 JWT。"""
     settings = get_settings()
     now = datetime.now(timezone.utc)
     payload = {
@@ -55,5 +60,6 @@ def create_access_token(user_id: int, username: str, role: str) -> str:
 
 
 def decode_access_token(token: str) -> dict:
+    """校验签名与过期时间，返回 JWT payload。"""
     settings = get_settings()
     return jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])

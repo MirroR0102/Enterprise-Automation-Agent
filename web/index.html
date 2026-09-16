@@ -7,7 +7,9 @@
   <link rel="stylesheet" href="/app.css" />
 </head>
 <body>
+  <!-- 主布局：左侧导航 + 右侧工作区 -->
   <div class="app-frame">
+    <!-- 侧栏：Logo、能力导航、用户卡片 -->
     <aside class="sidebar">
       <div class="logo">
         <span class="dot" aria-hidden="true"></span>
@@ -28,6 +30,7 @@
     </aside>
 
     <div class="main">
+      <!-- 顶栏：当前能力标题、会话信息、快捷操作 -->
       <header class="topbar">
         <div>
           <h2 id="panelTitle">运营周报 Agent</h2>
@@ -40,6 +43,7 @@
         </div>
       </header>
 
+      <!-- 运营周报：时间线 + 预览 + 输入区 -->
       <section class="panel panel-ops-layout" id="panel-ops">
         <div class="workspace" id="workspace">
           <div class="split" id="split">
@@ -73,6 +77,7 @@
         </div>
       </section>
 
+      <!-- 知识库问答（第 3 部分预留） -->
       <section class="panel" id="panel-kb" hidden>
         <div class="card kb-hero">
           <h3>知识库问答（第 3 部分）</h3>
@@ -91,6 +96,7 @@
     </div>
   </div>
 
+  <!-- 设置弹窗：昵称、周报目录偏好、退出 -->
   <div class="modal-backdrop" id="settingsModal" hidden>
     <div class="modal card">
       <h3>设置</h3>
@@ -107,6 +113,7 @@
     </div>
   </div>
 
+  <!-- 过往周报抽屉 -->
   <div class="drawer" id="reportsDrawer" hidden>
     <div class="drawer-panel card">
       <div class="preview-head">
@@ -121,6 +128,7 @@
   <script>
     requireLogin();
 
+    /* —— 常量与 DOM 引用 —— 能力列表、状态文案、页面元素 */
     const CAPABILITIES = [
       { id: "ops-report", hash: "ops", title: "运营周报 Agent", desc: "第 4 部分 · 工具编排生成周报", swatch: "ops", panel: "panel-ops" },
       { id: "kb-qa", hash: "kb", title: "知识库问答", desc: "第 3 部分 · 文档问答（预留）", swatch: "kb", panel: "panel-kb" },
@@ -150,6 +158,7 @@
     let pollTimer = null;
     let lastMarkdown = "";
 
+    /* —— 身份展示 —— 侧栏昵称/头像；dev 显示开发日志入口 */
     function shortId(id) {
       return id ? id.slice(0, 8) : "—";
     }
@@ -228,7 +237,6 @@
     switchCapability(capFromHash());
     window.addEventListener("hashchange", () => switchCapability(capFromHash()));
 
-    // 先用本地缓存立刻刷身份，避免一直停在占位文案
     renderIdentity({
       username: getUsername() || getRole() || "user",
       role: getRole(),
@@ -248,7 +256,7 @@
       }
     })();
 
-    // settings：整块用户区可点，不只头像
+    /* —— 设置 —— 用户卡片打开弹窗，保存昵称与目录偏好 */
     const settingsModal = document.getElementById("settingsModal");
     function openSettings() {
       document.getElementById("setNick").value = getNickname() || getUsername() || "";
@@ -269,6 +277,7 @@
       location.href = "/login.html";
     };
 
+    /* —— 会话与周报 —— 新建对话、拉取历史、Markdown 预览 */
     document.getElementById("closePreview").onclick = () => closePreview();
     document.getElementById("copyMd").onclick = async () => {
       if (!lastMarkdown) return;
@@ -329,6 +338,7 @@
       document.getElementById("reportsDrawer").hidden = true;
     };
 
+    /* —— 时间线 —— 创建会话、渲染事件流、轮询状态 */
     async function ensureSession() {
       if (sessionId) return sessionId;
       const res = await api("/api/sessions", { method: "POST" });
@@ -403,6 +413,7 @@
       }
     }
 
+    /* —— 输入区 —— 发送任务、取消执行 */
     sendBtn.onclick = async () => {
       const content = promptEl.value.trim();
       if (!content) return;
@@ -434,6 +445,7 @@
       poll();
     };
 
+    /* 知识库 Stub：本地演示，不请求后端 */
     document.getElementById("kbAsk").onclick = () => {
       const q = document.getElementById("kbQuestion").value.trim() || "（空问题）";
       document.getElementById("kbResult").textContent =

@@ -1,1 +1,1 @@
-"""Agent package."""
+"""智能体包：LangGraph 图、节点与状态定义。"""

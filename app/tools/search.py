@@ -1,9 +1,12 @@
+"""互联网搜索工具：基于 Tavily API。"""
+
 from langchain_core.tools import tool
 
 from app.config import get_settings
 
 
 def tavily_search(query: str) -> str:
+    """调用 Tavily 搜索并返回文本或 JSON 字符串。"""
     settings = get_settings()
     if not settings.tavily_api_key:
         return "搜索失败：未配置 TAVILY_API_KEY。请在 .env 中填写后再试。"

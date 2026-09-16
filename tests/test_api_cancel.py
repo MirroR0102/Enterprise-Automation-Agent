@@ -1,3 +1,5 @@
+"""会话取消 API：运行中可取消；已完成或已有 final 时忽略。"""
+
 import asyncio
 
 from app.agent.nodes import make_event
@@ -22,6 +24,7 @@ class InstantCompleteGraph:
 
 
 def test_cancel_running_task(client, monkeypatch):
+    """运行中任务 cancel 后状态变为 cancelled 并写入 cancelled 事件。"""
     monkeypatch.setattr("app.api.chat.get_compiled_graph", lambda: SlowGraph())
     token = login(client, "ops", "ops123")
     headers = auth_header(token)
@@ -44,6 +47,7 @@ def test_cancel_running_task(client, monkeypatch):
 
 
 def test_cancel_after_completed_keeps_completed(client, monkeypatch):
+    """任务已完成后再次 cancel 应返回 ok=false 且保持 completed。"""
     monkeypatch.setattr("app.api.chat.get_compiled_graph", lambda: InstantCompleteGraph())
     token = login(client, "ops", "ops123")
     headers = auth_header(token)
@@ -74,6 +78,7 @@ def test_cancel_after_completed_keeps_completed(client, monkeypatch):
 
 
 def test_cancel_ignored_when_final_already_present(client):
+    """内存中已有 final 事件时 cancel 应视为已完成并忽略。"""
     token = login(client, "ops", "ops123")
     headers = auth_header(token)
     session_id = client.post("/api/sessions", headers=headers).json()["session_id"]

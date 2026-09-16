@@ -1,3 +1,5 @@
+"""FastAPI 应用入口：路由注册、CORS、静态前端与健康检查。"""
+
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -15,6 +17,7 @@ from app.db.mysql import init_schema_and_seed
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    """启动时初始化数据库表结构与演示账号。"""
     init_schema_and_seed()
     yield
 
@@ -35,9 +38,11 @@ app.include_router(reports_router)
 
 @app.get("/api/health")
 def health() -> dict:
+    """存活探针。"""
     return {"ok": True}
 
 
+# 若存在 web/ 目录则挂载 SPA 静态资源
 web_dir = Path(ROOT_DIR / "web")
 if web_dir.exists():
     app.mount("/", StaticFiles(directory=str(web_dir), html=True), name="web")

@@ -299,6 +299,7 @@ def bullets_card(s, x, y, w, h, title, items, fill=LIGHT, line=None,
 
 
 # ================================================================ PPT
+# ---------------------------------------------------------------- PPT 组装（22 页）
 def build_pptx() -> Path:
     prs = Presentation()
     prs.slide_width = Inches(13.333)
@@ -981,6 +982,7 @@ def build_pptx() -> Path:
 
 
 # ================================================================ PDF 工具
+# ---------------------------------------------------------------- 演讲稿 PDF
 def _register_font() -> str:
     candidates = [
         Path(r"C:\Windows\Fonts\msyh.ttc"),
@@ -1286,6 +1288,7 @@ def build_speech_pdf() -> Path:
 _registered_cache: list[str] = []
 
 
+# ---------------------------------------------------------------- 报告执行说明（md + pdf）
 def _registered_fonts() -> list[str]:
     return _registered_cache
 
@@ -1513,9 +1516,4 @@ def main():
     print("OK")
     print("PPT   :", pptx_path)
     print("Speech:", speech)
-    print("Runbook:", runbook)
-    print("Runbook md:", runbook_md)
-
-
-if __name__ == "__main__":
-    main()
+    print("Ru
