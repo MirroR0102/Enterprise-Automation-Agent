@@ -43,6 +43,7 @@
 
 - 2026-09-16 · Agent 完成 M1/U1–U6/DB1/D1：会话复用+新开对话、发送清空、昵称/登录名、设置面板、入参默认展开、每用户分库与过往周报 API/UI、acceptance 记忆话术。涉及：`web/*`、`app/db/user_store.py`、`app/api/{chat,reports}.py`、`tests/test_reports.py`、`README.md`、`AGENT.md`、`scripts/acceptance_check.md`。P0–P4 汇报材料仍未做。顶部分割线为有意弱化分隔（U3）。
 - 2026-09-16 · 侧栏身份/设置修复后本地 commit；完成 P0–P4：重写 `scripts/build_presentation.py`，产出 20 页少字多图 PPT、~30′ 讲稿、报告执行说明（md+pdf）；差距见下「P0 差距记录」。
+- 2026-09-16 · 用户评价首版汇报材料质量不足（「太烂」），要求参考 `reference-contract-ai/` 范本整体重做三件套（v2）：重写 `scripts/build_presentation.py` → 22 页新 PPT（封面/目录/痛点/边界/架构/时序/运行逻辑/工具/安全/登录/界面/观测/记忆/演示提词/分库/代码地图/测试/联调复盘/风险/总结/展望/致谢）、7 页讲稿（正文 ≈5200 字）、4 页执行说明（md+pdf）；PPT 经 PowerPoint COM 导出 PNG 抽查；修复 PDF 缺字（↔/⇄/✓ 等改为文字表述）。涉及：`scripts/build_presentation.py`、`docs/presentation/*`、`README.md`、`AGENT.md`。
 - 2026-09-16 · 用户确认本文件为唯一修改清单；新增 U1–U4；指出左下「横线」实为未填充的 `—` 占位。
 - 2026-09-16 · 用户补充：登录名直接填充下行；设置可改昵称；上行粗=昵称，下行浅=登录用户名。
 - 2026-09-16 · 用户询问入参默认收起原因；改为 U5：入参/返回默认展开。

@@ -178,7 +178,7 @@ docs/presentation/       30 分钟汇报 PPTX + 演讲稿 PDF（本地，不 pus
 
 | 文件 | 路径 |
 | --- | --- |
-| PPT（20 页，少字多图） | `docs/presentation/第4部分-企业业务流程自动化Agent-汇报.pptx` |
+| PPT（22 页，少字多图，v2） | `docs/presentation/第4部分-企业业务流程自动化Agent-汇报.pptx` |
 | 演讲稿 PDF（≈30′） | `docs/presentation/第4部分-企业业务流程自动化Agent-演讲稿.pdf` |
 | 报告执行说明 PDF | `docs/presentation/第4部分-企业业务流程自动化Agent-报告执行说明.pdf` |
 | 报告执行说明（md 源） | `docs/presentation/第4部分-企业业务流程自动化Agent-报告执行说明.md` |
@@ -192,7 +192,7 @@ docs/presentation/       30 分钟汇报 PPTX + 演讲稿 PDF（本地，不 pus
 .\.venv\Scripts\python.exe scripts\build_presentation.py
 ```
 
-**维护约定：** 项目仍在迭代。每当架构、验收口径、安全止损、演示账号/验收句、第 3 部分接口、联调问题结论等有重要改动，请同步更新上述 PPTX 与 PDF（或改脚本后重跑），并视需要改大纲。`.pptx`/`.pdf` 已 gitignore，**不要 push**。范本目录 `reference-contract-ai/` 仅本地参考，亦不推送。
+**维护约定：** 项目仍在迭代。每当架构、验收口径、安全止损、演示账号/验收句、第 3 部分接口、联调问题结论等有重要改动，请同步更新上述 PPTX 与 PDF（或改脚本后重跑），并视需要改大纲。每次修改须先在 `AGENT.md`「已完成」区留痕（日期 · 改了什么 · 涉及文件），更新 PPT / 讲稿时直接对照该记录逐条同步。`.pptx`/`.pdf` 已 gitignore，**不要 push**。范本目录 `reference-contract-ai/` 仅本地参考，亦不推送。
 
 ## 联调问题记录（项目报告素材）
 
