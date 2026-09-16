@@ -38,7 +38,7 @@
         err.textContent = body.detail || "登录失败";
         return;
       }
-      setSession(body.access_token, body.role);
+      setSession(body.access_token, body.role, data.username);
       location.href = "/#ops";
     });
   </script>
