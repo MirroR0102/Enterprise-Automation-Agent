@@ -1516,4 +1516,9 @@ def main():
     print("OK")
     print("PPT   :", pptx_path)
     print("Speech:", speech)
-    print("Ru
+    print("Runbook:", runbook)
+    print("Runbook md:", runbook_md)
+
+
+if __name__ == "__main__":
+    main()
