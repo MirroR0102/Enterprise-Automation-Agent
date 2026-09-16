@@ -20,5 +20,8 @@ Thumbs.db
 *.docx
 docs/presentation/*.pptx
 docs/presentation/*.pdf
+docs/presentation/reference-contract-ai/
+docs/presentation/ui-reference-grokbot.png
 !docs/presentation/.gitkeep
 !docs/presentation/README.md
+!docs/presentation/*.md
