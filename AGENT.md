@@ -98,6 +98,7 @@ Windows / PowerShell：用 `D:\anaconda\python.exe -m venv .venv` 建环境；�
 - 2026-09-16：新增「修改留痕」强制规则（本文件「强制」区 + README「维护约定」同步）——每次修改在「已完成」区留一条记录，供 PPT/讲稿同步时对照；本条即第一条留痕。
 - 2026-09-16：全仓源码补充中文注释（仅注释/docstring、不改行为）——`app/**`、`web/**`、`scripts/init_db.py`/`purge_logs.py`、`tests/*.py`。
 - 2026-09-17：两项收尾改动——① 真流式：agent/tools 异步节点 + `final_delta` 逐字推送，前端改 SSE（失败回退轮询）；② `web_search` 固定近一周（Tavily `time_range=week`/`days=7`/`topic=news`），提示词与工具说明禁止编造新闻。涉及：`app/agent/nodes.py`、`prompts.py`、`app/tools/search.py`、`app/api/chat.py`、`web/index.html`、`tests/test_graph_limits.py`、`AGENT.md`/`README.md`。
+- 2026-09-17：IDE 报 `Cannot find module tavily` —— 分析器误用 Anaconda 全局解释器；已钉死 `.venv`（`.vscode/settings.json` + `pyproject.toml` 的 pyright/basedpyright）。`tavily` 本就在 `.venv` 与 `requirements.txt`（`tavily-python`）。
 
 ---
 

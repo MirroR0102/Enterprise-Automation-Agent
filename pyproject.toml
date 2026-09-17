@@ -12,3 +12,16 @@ asyncio_mode = "auto"
 filterwarnings = [
     "ignore::DeprecationWarning",
 ]
+
+# 分析器用项目 .venv（勿用 Anaconda 全局解释器，否则报找不到 tavily 等依赖）
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+pythonVersion = "3.13"
+extraPaths = ["."]
+
+[tool.basedpyright]
+venvPath = "."
+venv = ".venv"
+pythonVersion = "3.13"
+extraPaths = ["."]

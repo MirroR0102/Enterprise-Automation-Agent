@@ -227,6 +227,7 @@ docs/presentation/       30 分钟汇报 PPTX + 演讲稿 PDF（本地，不 pus
 ## 常见问题
 
 - **侧栏一直「加载中」、点不开设置**：曾因 head 里同步拉 `marked` CDN 卡住导致整页脚本不跑；现改为 `defer`，整块用户区可点，本地缓存先显示昵称/登录名。硬刷新（Ctrl+F5）后再试。
+- **IDE 报找不到 `tavily`**：包已装在项目 `.venv`（`tavily-python`），不是缺依赖。请把 Python 解释器选成 `.venv\Scripts\python.exe`（仓库已写 `.vscode/settings.json`）。勿用 Anaconda 根环境分析本项目。
 - **时间线要等任务结束才出现**：已改为异步节点 + SSE；请硬刷新。终稿会以 `final_delta` 逐字出现在右侧预览。
 - **Tavily 未配置 / 本周无新闻**：工具返回明确错误或空结果；周报须写「本周未检索到公开新闻」，禁止编造。搜索范围固定近一周。
 - **DeepSeek 401/超时**：检查 `DEEPSEEK_API_KEY`；任务超时固定 `TASK_TIMEOUT_S=30`（规划要求，勿擅自放宽）。
