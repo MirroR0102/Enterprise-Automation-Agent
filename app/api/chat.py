@@ -109,7 +109,7 @@ async def stream_events(session_id: str, user: User = Depends(get_current_user))
             if rec.status in terminal:
                 yield f"data: {json.dumps({'type': 'done', 'status': rec.status}, ensure_ascii=False)}\n\n"
                 break
-            await asyncio.sleep(0.25)
+            await asyncio.sleep(0.05)
 
     return StreamingResponse(generate(), media_type="text/event-stream")
 

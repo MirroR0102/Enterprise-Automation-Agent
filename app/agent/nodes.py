@@ -1,11 +1,17 @@
-"""LangGraph 节点实现：LLM 推理、工具调用、终稿汇总与事件持久化。"""
+"""LangGraph 节点实现：LLM 推理、工具调用、终稿汇总与事件持久化。
+
+agent 节点优先 astream：无工具调用时推送 final_delta（终稿逐字）；
+有工具调用时推送 thought。tools 节点在线程中执行，避免堵死事件循环。
+"""
 
 from __future__ import annotations
 
+import asyncio
+import json
 from datetime import datetime, timezone
 from typing import Any
 
-from langchain_core.messages import AIMessage, BaseMessage, ToolMessage
+from langchain_core.messages import AIMessage, BaseMessage, SystemMessage, ToolMessage
 from langgraph.prebuilt import ToolNode
 
 from app.agent.prompts import SYSTEM_PROMPT
@@ -55,15 +61,17 @@ def _cancelled(state: dict) -> dict:
 
 
 def _persist(state: dict, event: dict) -> None:
-    """将事件写入 DB 日志，并同步更新内存 SessionRecord 状态。"""
+    """将事件写入内存会话（SSE 可读）；终态类事件同步落库。delta 不写 DB 以免刷爆日志。"""
     from app.logging_service import log_event
     from app.runtime import get_session
 
-    log_event(state.get("session_id") or "", event["type"], event, user_id=state.get("user_id"))
+    et = event.get("type")
+    if et not in {"final_delta", "stream_reset"}:
+        log_event(state.get("session_id") or "", et, event, user_id=state.get("user_id"))
     rec = get_session(state.get("session_id") or "")
     if rec is not None:
         rec.events.append(event)
-        if event.get("type") in {"cancelled", "failed", "timeout", "max_rounds", "final"}:
+        if et in {"cancelled", "failed", "timeout", "max_rounds", "final"}:
             mapping = {
                 "cancelled": "cancelled",
                 "failed": "failed",
@@ -71,7 +79,7 @@ def _persist(state: dict, event: dict) -> None:
                 "max_rounds": "max_rounds",
                 "final": "completed",
             }
-            rec.status = mapping[event["type"]]
+            rec.status = mapping[et]
 
 
 def get_llm(llm=None):
@@ -104,39 +112,134 @@ def get_llm(llm=None):
     )
 
 
-def build_agent_node(llm=None, tools=None):
-    """返回 agent 节点：绑定工具调用 LLM，输出 thought 事件。"""
+def _chunk_text(chunk: Any) -> str:
+    """从流式 chunk 提取文本增量。"""
+    content = getattr(chunk, "content", None)
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts: list[str] = []
+        for item in content:
+            if isinstance(item, str):
+                parts.append(item)
+            elif isinstance(item, dict) and item.get("type") == "text":
+                parts.append(str(item.get("text") or ""))
+        return "".join(parts)
+    return ""
 
-    def agent_node(state: dict) -> dict:
-        # 各节点入口统一检查取消标志
+
+def _chunk_has_tool_calls(chunk: Any) -> bool:
+    """判断 chunk 是否携带工具调用碎片或完整 tool_calls。"""
+    tcc = getattr(chunk, "tool_call_chunks", None) or []
+    if tcc:
+        return True
+    tool_calls = getattr(chunk, "tool_calls", None) or []
+    return bool(tool_calls)
+
+
+async def _invoke_llm(bound: Any, messages: list) -> Any:
+    """无 astream 时在线程池里同步 invoke，避免阻塞事件循环。"""
+    invoke = getattr(bound, "invoke", None)
+    if invoke is None:
+        raise RuntimeError("LLM 不可调用")
+    return await asyncio.to_thread(invoke, messages)
+
+
+async def _stream_or_invoke(bound: Any, messages: list, state: dict, events: list) -> tuple[Any, list]:
+    """流式调用 LLM：无工具时推 final_delta；有工具时结束推 thought。"""
+    astream = getattr(bound, "astream", None)
+    if not callable(astream):
+        response = await _invoke_llm(bound, messages)
+        thought = getattr(response, "content", "") or ""
+        tool_calls = getattr(response, "tool_calls", None) or []
+        if tool_calls:
+            if thought:
+                event = make_event("thought", thought if isinstance(thought, str) else str(thought))
+                events.append(event)
+                _persist(state, event)
+        else:
+            text = thought if isinstance(thought, str) else str(thought)
+            if text:
+                # 非流式模型：按小块推送，仍让前端有打字效果且让出事件循环
+                step = 24
+                for i in range(0, len(text), step):
+                    piece = text[i : i + step]
+                    event = make_event("final_delta", piece)
+                    events.append(event)
+                    _persist(state, event)
+                    await asyncio.sleep(0)
+        return response, events
+
+    accumulated = None
+    saw_tools = False
+    emitted_delta = False
+    full_text = ""
+
+    async for chunk in astream(messages):
+        if is_cancelled(state.get("session_id") or ""):
+            break
+        accumulated = chunk if accumulated is None else accumulated + chunk
+        if _chunk_has_tool_calls(chunk):
+            if not saw_tools and emitted_delta:
+                # 先当终稿流了，随后发现要调工具 → 通知前端清空草稿
+                reset = make_event("stream_reset", "模型改为调用工具，清空周报草稿")
+                events.append(reset)
+                _persist(state, reset)
+                emitted_delta = False
+            saw_tools = True
+        piece = _chunk_text(chunk)
+        if piece:
+            full_text += piece
+            if not saw_tools:
+                event = make_event("final_delta", piece)
+                events.append(event)
+                _persist(state, event)
+                emitted_delta = True
+
+    if accumulated is None:
+        response = await _invoke_llm(bound, messages)
+    else:
+        response = accumulated
+
+    tool_calls = getattr(response, "tool_calls", None) or []
+    if tool_calls or saw_tools:
+        thought = full_text or getattr(response, "content", "") or ""
+        if thought:
+            event = make_event(
+                "thought",
+                thought if isinstance(thought, str) else str(thought),
+            )
+            events.append(event)
+            _persist(state, event)
+    return response, events
+
+
+def build_agent_node(llm=None, tools=None):
+    """返回异步 agent 节点：流式推送 final_delta / thought。"""
+
+    async def agent_node(state: dict) -> dict:
         if is_cancelled(state.get("session_id") or ""):
             result = _cancelled(state)
             _persist(state, result["events"][-1])
             return result
-        from langchain_core.messages import SystemMessage
 
         bound = get_llm(llm).bind_tools(tools or [])
         messages = [SystemMessage(content=SYSTEM_PROMPT), *state.get("messages", [])]
-        response = bound.invoke(messages)
         events = list(state.get("events") or [])
-        thought = getattr(response, "content", "") or ""
-        if thought:
-            event = make_event("thought", thought if isinstance(thought, str) else str(thought))
-            events.append(event)
-            _persist(state, event)
+        response, events = await _stream_or_invoke(bound, messages, state, events)
         return {"messages": [response], "events": events, "status": "running"}
 
     return agent_node
 
 
 def build_tools_node(tools):
-    """返回 tools 节点：记录 tool_call/result，限制轮次，失败时重试一次。"""
+    """返回异步 tools 节点：记录 tool_call/result，限制轮次，失败时重试一次。"""
     try:
         inner = ToolNode(tools, handle_tool_errors=False)
     except TypeError:
         inner = ToolNode(tools)
 
-    def tools_node(state: dict) -> dict:
+    async def tools_node(state: dict) -> dict:
         if is_cancelled(state.get("session_id") or ""):
             result = _cancelled(state)
             _persist(state, result["events"][-1])
@@ -144,7 +247,6 @@ def build_tools_node(tools):
         settings = get_settings()
         tool_round = int(state.get("tool_round") or 0) + 1
         events = list(state.get("events") or [])
-        # 超过配置上限则终止，防止无限工具循环
         if tool_round > settings.max_tool_rounds:
             event = make_event(
                 "max_rounds",
@@ -156,7 +258,6 @@ def build_tools_node(tools):
 
         last: BaseMessage = state["messages"][-1]
         tool_calls = getattr(last, "tool_calls", None) or []
-        import json
 
         for call in tool_calls:
             name = call.get("name") if isinstance(call, dict) else getattr(call, "name", "")
@@ -173,12 +274,11 @@ def build_tools_node(tools):
         def _invoke():
             return inner.invoke(state)
 
-        # 工具失败时立即重试一次，连续两次失败则标记 failed
         try:
-            result = _invoke()
+            result = await asyncio.to_thread(_invoke)
         except Exception as first:
             try:
-                result = _invoke()
+                result = await asyncio.to_thread(_invoke)
             except Exception as second:
                 event = make_event("error", f"工具连续失败两次，已停止：{second}")
                 events.append(event)
@@ -212,7 +312,7 @@ def build_tools_node(tools):
     return tools_node
 
 
-def finalize_node(state: dict) -> dict:
+async def finalize_node(state: dict) -> dict:
     """无更多 tool_calls 时提取最终 AI 回复，写入 final 事件并标记 completed。"""
     if is_cancelled(state.get("session_id") or ""):
         result = _cancelled(state)

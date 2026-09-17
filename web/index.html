@@ -139,9 +139,11 @@
     };
     const EVENT_LABELS = {
       user_input: "用户输入", thought: "思考", tool_call: "调用工具", tool_result: "工具返回",
-      final: "最终结果", error: "错误", cancelled: "已取消", timeout: "超时", max_rounds: "达到最大轮次",
+      final: "最终结果", final_delta: "周报生成中", stream_reset: "清空草稿",
+      error: "错误", cancelled: "已取消", timeout: "超时", max_rounds: "达到最大轮次",
     };
     const TERMINAL = ["completed", "failed", "cancelled", "timeout", "max_rounds"];
+    const SKIP_TIMELINE = new Set(["final_delta", "stream_reset"]);
 
     const navList = document.getElementById("navList");
     const panelTitle = document.getElementById("panelTitle");
@@ -156,6 +158,9 @@
 
     let sessionId = "";
     let pollTimer = null;
+    let streamAbort = null;
+    let liveEvents = [];
+    let draftMarkdown = "";
     let lastMarkdown = "";
 
     /* —— 身份展示 —— 侧栏昵称/头像；dev 显示开发日志入口 */
@@ -289,9 +294,11 @@
     };
 
     document.getElementById("btnNewChat").onclick = () => {
-      if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+      stopStream();
       sessionId = "";
       lastMarkdown = "";
+      draftMarkdown = "";
+      liveEvents = [];
       closePreview();
       document.getElementById("timeline").innerHTML =
         '<p class="hint empty-hint">新对话已就绪。发送任务后，执行步骤会显示在这里。</p>';
@@ -374,11 +381,12 @@
       const box = document.getElementById("timeline");
       box.innerHTML = "";
       let finalMd = "";
-      if (!events || !events.length) {
+      const visible = (events || []).filter((ev) => !SKIP_TIMELINE.has(ev.type));
+      if (!visible.length) {
         box.innerHTML = '<p class="hint empty-hint">发送任务后，执行步骤会显示在这里。</p>';
         return "";
       }
-      for (const ev of events) {
+      for (const ev of visible) {
         const div = document.createElement("div");
         div.className = "event " + (ev.type || "");
         const meta = document.createElement("div");
@@ -398,16 +406,109 @@
       return finalMd;
     }
 
+    function stopStream() {
+      if (streamAbort) {
+        streamAbort.abort();
+        streamAbort = null;
+      }
+      if (pollTimer) {
+        clearInterval(pollTimer);
+        pollTimer = null;
+      }
+    }
+
+    function applyStreamEvent(ev) {
+      if (!ev || !ev.type) return;
+      if (ev.type === "done") {
+        setStatus(ev.status || "idle");
+        sendBtn.disabled = false;
+        setCancelEnabled(false);
+        stopStream();
+        return;
+      }
+      if (ev.type === "final_delta") {
+        draftMarkdown += ev.content || "";
+        openPreview(draftMarkdown, "周报生成中…");
+        return;
+      }
+      if (ev.type === "stream_reset") {
+        draftMarkdown = "";
+        closePreview();
+        return;
+      }
+      liveEvents.push(ev);
+      const finalMd = renderEvents(liveEvents);
+      if (ev.type === "final") {
+        draftMarkdown = "";
+        openPreview(finalMd || ev.content || "");
+      }
+      if (["cancelled", "failed", "timeout", "max_rounds"].includes(ev.type)) {
+        setStatus(ev.type);
+      }
+    }
+
+    async function startEventStream() {
+      stopStream();
+      liveEvents = [];
+      draftMarkdown = "";
+      streamAbort = new AbortController();
+      try {
+        const res = await fetch(`/api/sessions/${sessionId}/stream`, {
+          headers: { Authorization: `Bearer ${getToken()}` },
+          signal: streamAbort.signal,
+        });
+        if (res.status === 401) {
+          clearSession();
+          location.href = "/login.html";
+          return;
+        }
+        if (!res.ok || !res.body) {
+          // SSE 失败时回退轮询
+          pollTimer = setInterval(poll, 400);
+          poll();
+          return;
+        }
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = "";
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          const chunks = buf.split("\n\n");
+          buf = chunks.pop() || "";
+          for (const chunk of chunks) {
+            const line = chunk.split("\n").find((l) => l.startsWith("data: "));
+            if (!line) continue;
+            try {
+              applyStreamEvent(JSON.parse(line.slice(6)));
+            } catch (_) {}
+          }
+        }
+      } catch (err) {
+        if (err && err.name === "AbortError") return;
+        pollTimer = setInterval(poll, 400);
+        poll();
+      }
+    }
+
     async function poll() {
       if (!sessionId) return;
       const res = await api(`/api/sessions/${sessionId}/events`);
       const body = await res.json();
       setStatus(body.status || "idle");
-      const finalMd = renderEvents(body.events);
+      liveEvents = body.events || [];
+      let draft = "";
+      for (const ev of liveEvents) {
+        if (ev.type === "stream_reset") draft = "";
+        else if (ev.type === "final_delta") draft += ev.content || "";
+      }
+      draftMarkdown = draft;
+      const finalMd = renderEvents(liveEvents);
       if (finalMd) openPreview(finalMd);
+      else if (draftMarkdown) openPreview(draftMarkdown, "周报生成中…");
       if (TERMINAL.includes(body.status)) {
-        clearInterval(pollTimer);
-        pollTimer = null;
+        stopStream();
         sendBtn.disabled = false;
         setCancelEnabled(false);
       }
@@ -421,6 +522,9 @@
       setStatus("running");
       setCancelEnabled(true);
       closePreview();
+      draftMarkdown = "";
+      liveEvents = [];
+      renderEvents([]);
       await ensureSession();
       const res = await api(`/api/sessions/${sessionId}/messages`, {
         method: "POST",
@@ -433,15 +537,14 @@
         return;
       }
       promptEl.value = "";
-      if (pollTimer) clearInterval(pollTimer);
-      pollTimer = setInterval(poll, 400);
-      poll();
+      startEventStream();
     };
 
     cancelBtn.onclick = async () => {
       if (!sessionId || cancelBtn.disabled) return;
       if (!confirm("确认终止当前任务？")) return;
       await api(`/api/sessions/${sessionId}/cancel`, { method: "POST" });
+      // 等 SSE done；同时补一次轮询兜底
       poll();
     };
 

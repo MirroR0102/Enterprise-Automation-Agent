@@ -1,5 +1,7 @@
 """LangGraph 编排限制：最大工具轮次与工具失败重试后停止。"""
 
+import asyncio
+
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.tools import tool
 
@@ -50,16 +52,18 @@ def test_max_rounds_stops(monkeypatch):
     monkeypatch.setenv("MAX_TOOL_ROUNDS", "0")
     get_settings.cache_clear()
     graph = build_graph(llm=LoopLLM(), tools=[echo_tool])
-    result = graph.invoke(
-        {
-            "messages": [HumanMessage(content="loop")],
-            "session_id": "s-max",
-            "user_id": 1,
-            "tool_round": 0,
-            "status": "running",
-            "events": [],
-        },
-        {"configurable": {"thread_id": "s-max"}},
+    result = asyncio.run(
+        graph.ainvoke(
+            {
+                "messages": [HumanMessage(content="loop")],
+                "session_id": "s-max",
+                "user_id": 1,
+                "tool_round": 0,
+                "status": "running",
+                "events": [],
+            },
+            {"configurable": {"thread_id": "s-max"}},
+        )
     )
     assert result["status"] == "max_rounds"
     get_settings.cache_clear()
@@ -68,17 +72,18 @@ def test_max_rounds_stops(monkeypatch):
 def test_tool_failure_retries_once_then_stops():
     """工具连续失败后 status=failed 且 events 含 error。"""
     graph = build_graph(llm=FailLLM(), tools=[boom])
-    result = graph.invoke(
-        {
-            "messages": [HumanMessage(content="fail")],
-            "session_id": "s-fail",
-            "user_id": 1,
-            "tool_round": 0,
-            "status": "running",
-            "events": [],
-        },
-        {"configurable": {"thread_id": "s-fail"}},
+    result = asyncio.run(
+        graph.ainvoke(
+            {
+                "messages": [HumanMessage(content="fail")],
+                "session_id": "s-fail",
+                "user_id": 1,
+                "tool_round": 0,
+                "status": "running",
+                "events": [],
+            },
+            {"configurable": {"thread_id": "s-fail"}},
+        )
     )
     assert result["status"] == "failed"
-    errors = [e for e in result["events"] if e["type"] == "error"]
-    assert errors
+    assert any(e.get("type") == "error" for e in result.get("events") or [])

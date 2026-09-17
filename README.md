@@ -98,8 +98,8 @@ copy .env.example .env
 | GET | `/api/auth/me` | 当前用户 |
 | POST | `/api/sessions` | 创建会话 → `{session_id}` |
 | POST | `/api/sessions/{id}/messages` | `{content}` 后台启动 Agent |
-| GET | `/api/sessions/{id}/events` | 事件列表（前端时间线轮询） |
-| GET | `/api/sessions/{id}/stream` | SSE |
+| GET | `/api/sessions/{id}/events` | 事件列表（轮询兜底） |
+| GET | `/api/sessions/{id}/stream` | SSE 主通道：过程事件实时 + `final_delta` 终稿逐字；结束发 `done` |
 | POST | `/api/sessions/{id}/cancel` | 合作式取消（仅 running；已完成/已有 final 时保持原终态，`ok:false`） |
 | GET | `/api/reports` | 当前用户过往周报列表（每用户分库） |
 | GET | `/api/reports/{id}` | 单份周报 Markdown |
@@ -110,14 +110,18 @@ copy .env.example .env
 
 ```json
 {
-  "type": "thought|tool_call|tool_result|final|error|cancelled|max_rounds|timeout",
+  "type": "thought|tool_call|tool_result|final|final_delta|stream_reset|error|cancelled|max_rounds|timeout|done",
   "timestamp": "ISO-8601",
-  "content": "文本或摘要",
+  "content": "文本或摘要（final_delta 为增量片段）",
   "tool": "可选工具名",
   "input": "可选入参",
   "output": "可选返回"
 }
 ```
+
+前端默认走 SSE；失败时回退轮询。`final_delta` 只更新周报预览（不刷时间线）；`stream_reset` 在模型改走工具时清空草稿。
+
+`web_search`：Tavily `topic=news` + `time_range=week` + `days=7`，仅近一周；无结果须写「本周未检索到」，禁止编造新闻。
 
 硬限制：最多 **8** 轮工具；工具失败 **重试 1 次** 仍失败则停止；任务 **30 秒**超时（可配）；SQL 只允许单条 SELECT，拦截 drop/alter/delete/truncate/insert/update/create/grant/revoke。
 
@@ -223,7 +227,8 @@ docs/presentation/       30 分钟汇报 PPTX + 演讲稿 PDF（本地，不 pus
 ## 常见问题
 
 - **侧栏一直「加载中」、点不开设置**：曾因 head 里同步拉 `marked` CDN 卡住导致整页脚本不跑；现改为 `defer`，整块用户区可点，本地缓存先显示昵称/登录名。硬刷新（Ctrl+F5）后再试。
-- **Tavily 未配置**：工具返回明确错误，周报应写明未检索到公开新闻，而不是编造。
+- **时间线要等任务结束才出现**：已改为异步节点 + SSE；请硬刷新。终稿会以 `final_delta` 逐字出现在右侧预览。
+- **Tavily 未配置 / 本周无新闻**：工具返回明确错误或空结果；周报须写「本周未检索到公开新闻」，禁止编造。搜索范围固定近一周。
 - **DeepSeek 401/超时**：检查 `DEEPSEEK_API_KEY`；任务超时固定 `TASK_TIMEOUT_S=30`（规划要求，勿擅自放宽）。
 - **SQL 写错列名**：见上文「联调问题记录」；业务表是 `sales(sale_date, amount, region)`，不是 `order_date`。
 - **MemorySaver 进程内记忆**：多副本/重启丢会话图状态；日志仍在 DB。后续可换 Postgres checkpointer。

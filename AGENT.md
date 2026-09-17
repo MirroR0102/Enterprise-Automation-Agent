@@ -96,7 +96,8 @@ Windows / PowerShell：用 `D:\anaconda\python.exe -m venv .venv` 建环境；�
 - 2026-09-16：汇报材料 P0–P4 完成 — 20 页少字多图 PPT + ≈30′ 讲稿 + 报告执行说明；脚本 `scripts/build_presentation.py`；成品本地不 push
 - 2026-09-16（v2）：用户认为首版质量不足，整体重做三件套 — 22 页新版 PPT（新增分库页、联调复盘页；经 PowerPoint 导出 PNG 逐页抽查）+ 7 页讲稿（正文 ≈5200 字，含减配/附录）+ 4 页执行说明（md+pdf）；生成脚本重写；旧版产物已被覆盖（不 push）
 - 2026-09-16：新增「修改留痕」强制规则（本文件「强制」区 + README「维护约定」同步）——每次修改在「已完成」区留一条记录，供 PPT/讲稿同步时对照；本条即第一条留痕。
-- 2026-09-16：全仓源码补充中文注释（仅注释/docstring、不改行为）——`app/**`（agent/api/auth/db/tools/main/runtime/config/logging）、`web/**`、`scripts/init_db.py`/`purge_logs.py`、`tests/*.py`；`pytest` 28 passed。涉及上述路径 + `AGENT.md`/`README.md`。
+- 2026-09-16：全仓源码补充中文注释（仅注释/docstring、不改行为）——`app/**`、`web/**`、`scripts/init_db.py`/`purge_logs.py`、`tests/*.py`。
+- 2026-09-17：两项收尾改动——① 真流式：agent/tools 异步节点 + `final_delta` 逐字推送，前端改 SSE（失败回退轮询）；② `web_search` 固定近一周（Tavily `time_range=week`/`days=7`/`topic=news`），提示词与工具说明禁止编造新闻。涉及：`app/agent/nodes.py`、`prompts.py`、`app/tools/search.py`、`app/api/chat.py`、`web/index.html`、`tests/test_graph_limits.py`、`AGENT.md`/`README.md`。
 
 ---
 
