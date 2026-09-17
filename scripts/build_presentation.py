@@ -432,7 +432,7 @@ def build_pptx() -> Path:
              fill=LIGHT if i % 2 == 0 else SOFT, anchor=MSO_ANCHOR.MIDDLE)
         y += 1.02
     txt(s, 0.55, 6.40, 12.2, 0.5,
-        [P(T("选型说明：默认 DeepSeek（openai 兼容，演示可切 GPT-4o-mini，预留 Qwen）；前端零框架静态页；事件“轮询 + SSE”双通道。",
+        [P(T("选型说明：默认 DeepSeek（openai 兼容，演示可切 GPT-4o-mini，预留 Qwen）；前端零框架；主通道 SSE + final_delta 逐字；失败回退轮询。",
              size=11.5, color=MUTED), sa=0)])
 
     # ---------------------------------------------------------- 06 一次任务全流程
@@ -546,7 +546,7 @@ def build_pptx() -> Path:
     s = new()
     header(s, 8, "D · 工具箱", "7 个工具：每个都有“护栏”")
     tools_top = [
-        ("web_search", "Tavily 联网搜索", "行业新闻 / 公开信息", "未配置 → 明确报错，不编新闻"),
+        ("web_search", "Tavily 近一周新闻", "topic=news · time_range=week", "无结果 → 写明本周未检索到，不编新闻"),
         ("mysql_query", "只读 SQL 查询", "sales(sale_date, amount, region)", "仅 SELECT + 黑名单 + 禁多语句"),
         ("calculator", "安全计算器", "ast 白名单数学表达式", "禁 exec / 求值任意代码"),
         ("current_time", "当前时间", "让“本月 / 去年同月”对齐真实日期", "相对时间的锚点"),
@@ -709,7 +709,7 @@ def build_pptx() -> Path:
          fill=LIGHT, anchor=MSO_ANCHOR.TOP)
     card(s, 5.30, 1.28, 7.48, 2.15,
          [P(T("两条通路：前端实时 + 后端持久化", size=13.5, bold=True, color=NAVY), sa=6, align=PP_ALIGN.LEFT),
-          P(T("· 前端：轮询 GET events + SSE 流式，按序渲染时间线；", size=12.5, color=INK), sa=3, align=PP_ALIGN.LEFT),
+          P(T("· 前端主通道 SSE：过程事件实时推送；终稿 final_delta 逐字刷新预览；失败回退轮询；", size=12.5, color=INK), sa=3, align=PP_ALIGN.LEFT),
           P(T("· 后端：每个事件同步写 agent_logs 与用户分库 tool_events，带时间戳；", size=12.5, color=INK), sa=3, align=PP_ALIGN.LEFT),
           P(T("· 事件与状态双轨：终态由事件驱动（final → completed）。", size=12.5, color=INK), sa=0, align=PP_ALIGN.LEFT)],
          fill=WHITE, line=GREY_LINE)
@@ -1116,20 +1116,17 @@ def build_speech_pdf() -> Path:
     CUE("指 PPT 第 5 页分层图，从上往下依次指；不要念模块名，讲“每层负责什么”。")
     P("再看“一次任务怎么走”。用户登录拿到 Token，创建一个会话，粘贴一句任务；后台把这句话交给图：agent 节点先思考，"
       "需要数据就发起工具调用；tools 节点执行工具，结果写回状态；agent 再决策——还需要信息就继续调工具；"
-      "信息够了就走到 finalize，把完整 Markdown 作为最终事件推给前端。前端一边轮询、一边用 SSE 接收事件，"
-      "把“思考 → 工具名 → 入参 → 返回 → 终稿”实时画成时间线；同时所有事件落日志库，成功周报再落用户分库。")
+      "信息够了就走到 finalize。前端主通道走 SSE：过程事件实时上时间线，终稿以 final_delta 逐字刷右侧预览；"
+      "SSE 失败才回退轮询；同时事件落日志库，成功周报再落用户分库。")
     P("为什么用图、而不是一次性 Prompt？三个原因：第一，多步工具链的循环——“思考、调用、回填”用条件边表达最自然；"
       "第二，终止条件可以精确控制——轮次、超时、取消、失败，全部挂在图上；第三，状态和事件都在图里流转，天然可审计。")
-    P("再说两个实现细节。第一，前端是怎么做到“实时”的？其实两条通路并存：一条是定时轮询事件列表——"
-      "服务端每 0.25 秒检查一次有没有新事件；另一条是 SSE 流式通道，任务结束时会推送一个 done 信号。"
-      "这样即使某一条通路抖动，时间线也不会丢内容。第二，事件是“只增不改”的：思考、调用、返回、终稿，"
-      "按时间戳追加；终态由事件驱动——“final 到达”这件事本身就是“任务完成”的判定依据。"
-      "这也保证了回放的一致性：开发日志里看到的事件序列，就是当时前端时间线上出现的序列。")
+    P("再说两个实现细节。第一，异步节点 + SSE：LLM 流式输出时事件循环不被堵死，所以演示时你会看到步骤边跑边出、"
+      "周报逐字出现。第二，搜索锁死近一周——Tavily topic=news、time_range=week；无结果必须写「本周未检索到」，严禁编造。")
     CUE("翻到 PPT 第 7 页运行逻辑图：先指 agent 与 tools 的循环，再指下面三张卡（状态字段 / 状态机 / 止损）。")
 
     H("四、核心机制 · 工具箱与安全止损（11:00–14:00）｜ PPT 8–9")
     P("具体讲两个关键机制：工具箱和安全止损。")
-    P("工具箱七个，各有护栏。搜索工具接的是 Tavily，拿公开的行业新闻；SQL 工具只允许查——业务表 sales 就三列，"
+    P("工具箱七个，各有护栏。搜索工具接的是 Tavily，只取近一周公开新闻；SQL 工具只允许查——业务表 sales 就三列，"
       "sale_date、amount、region，工具说明里写得清清楚楚，就是为了不让模型发挥出不存在的列名；"
       "计算器用 Python 的 ast 白名单实现，只算数学表达式，不能执行任意代码；时间工具提供“今天”，"
       "因为“本月”“去年同月”这种相对时间要锚定到真实日期；文件工具锁死在 reports 目录里，只许 .md，"
